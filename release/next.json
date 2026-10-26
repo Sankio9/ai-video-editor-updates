@@ -1,0 +1,9 @@
+{
+  "version": "1.8.10",
+  "files": [
+    {
+      "path": "updater/channel_probe.json",
+      "before_sha256": null
+    }
+  ]
+}
