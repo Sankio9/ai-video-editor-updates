@@ -1,9 +1,12 @@
 {
-  "version": "1.8.10",
+  "version": "1.8.11",
+  "encoded_archive": "release/assets/v1.8.11.zip.b64",
+  "archive_sha256": "cbe35fc444a043059b9c473190147d3930353df51e21209f99d3c898d71396e5",
   "files": [
     {
-      "path": "updater/channel_probe.json",
-      "before_sha256": null
+      "path": "cep/aive_updater_panel.js",
+      "sha256": "ec1bac9e38ae28310a398eda8b050d3c90b52b503307261782cadb0e317d5868",
+      "before_sha256": "c8b00c786bf508b2af86d91551446d52185d44da2c4796b79e21138b44afe978"
     }
   ]
 }
