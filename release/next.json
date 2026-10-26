@@ -1,12 +1,12 @@
 {
-  "version": "1.8.11",
-  "encoded_archive": "release/assets/v1.8.11.zip.b64",
-  "archive_sha256": "cbe35fc444a043059b9c473190147d3930353df51e21209f99d3c898d71396e5",
+  "version": "1.9.0",
+  "encoded_archive": "release/assets/v1.9.0.zip.b64",
+  "archive_sha256": "c50acecd81b3d10d8d5e2675b3d587555b854891555b00c81b9ac412a74a1cfb",
   "files": [
     {
-      "path": "cep/aive_updater_panel.js",
-      "sha256": "ec1bac9e38ae28310a398eda8b050d3c90b52b503307261782cadb0e317d5868",
-      "before_sha256": "c8b00c786bf508b2af86d91551446d52185d44da2c4796b79e21138b44afe978"
+      "path": "cep/jsx/r186_oneclick.jsx",
+      "sha256": "90ae29a936756efcbe86059755fa06a9760b3b294f9260e06e98944c8f6999f4",
+      "before_sha256": "35faecb3a78b88363987d976b2fee88e0bbc7d9245d1cc4705ffc920ae3cbbb3"
     }
   ]
 }
