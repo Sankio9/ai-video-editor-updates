@@ -19,7 +19,7 @@ jobs:
           persist-credentials: false
       - name: Build and validate allowlisted update
         run: |
-          VERSION="$(python3 -c \"import json;print(json.load(open('release/next.json'))['version'])\")"
+          VERSION=$(python3 -c 'import json;print(json.load(open("release/next.json"))["version"])')
           if [ "$VERSION" = "1.9.1" ]; then
             python3 scripts/build_r1911.py
           else
