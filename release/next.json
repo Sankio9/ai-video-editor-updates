@@ -1,37 +1,17 @@
 {
-  "version": "1.9.3",
+  "version": "1.9.4",
   "files": [
     {
-      "path": "cep/aive_updater_panel.js",
-      "sha256": "7be714664d4b52f8b2ccf44a6f0d6a9818afd71651cc2af2196d61b6cea62906",
-      "before_sha256": "3892fe8efc7f0c5b53ef1db4e8b1d8579820db1bc15604b7ff0c270c2b9dacdb"
-    },
-    {
       "path": "cep/r193_workflow.js",
-      "sha256": "d48db0182e03b9e8f8879c19af89600f6daa16adccd604867ab17c76f97534c4",
-      "before_sha256": null
-    },
-    {
-      "path": "cep/jsx/r193_media_probe.jsx",
-      "sha256": "0398cd90cf328d1182fa08f6b4944e799fea829a4b299c217afe396b5ca91e4d",
-      "before_sha256": null
+      "sha256": "527543efa3cab3ebbb176c9274719b60d713dbd3239e82054e0533b1134f9b7f",
+      "before_sha256": "d48db0182e03b9e8f8879c19af89600f6daa16adccd604867ab17c76f97534c4"
     },
     {
       "path": "tools/r193_pipeline.py",
-      "sha256": "c43b4dc8a3639d30281d718ebe9b4b15e29c75363afd693241e438ee1cce1971",
-      "before_sha256": null
-    },
-    {
-      "path": "tools/r193_adapter.py",
-      "sha256": "ab3cec6b59fa51d921f68e5d4394ca01313553920d018c46a712b498fa7cde25",
-      "before_sha256": null
-    },
-    {
-      "path": "tools/r193_docx_reader.py",
-      "sha256": "c8b682a2fd1f7b18273227914e84e8e1547afd9f1f4c7e0bd1ecd86ba851a822",
-      "before_sha256": null
+      "sha256": "d1b755639a9a790237e2340359fe3bd282898cfbc7364632aa03ad394ddb6077",
+      "before_sha256": "c43b4dc8a3639d30281d718ebe9b4b15e29c75363afd693241e438ee1cce1971"
     }
   ],
-  "archive_sha256": "8190aac0fb7ecca1bb668c6bbd722be72528abfdaee57d7fdcff36e05325558a",
-  "encoded_archive": "release/assets/v1.9.3.zip.b64"
+  "archive_sha256": "022402039bf7c4e9760426210823d56bd9ccd447943313d558bb998fe608fb1f",
+  "encoded_archive": "release/assets/v1.9.4.zip.b64"
 }
