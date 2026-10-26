@@ -1,0 +1,29 @@
+name: Stage AI Video Editor releases safely
+on:
+  push:
+    branches: [main]
+    paths: ['release/stage-control.json']
+permissions:
+  contents: write
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Keep sequential updater compatibility
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import json
+          with open('release/stage-control.json',encoding='utf-8') as f:
+              x=json.load(f)
+          assert x == {"next_for_existing_clients":"v1.9.3","hold_until_prior_installed":"v1.9.4"}
+          PY
+          gh release edit v1.9.4 --prerelease
+          gh release edit v1.9.3 --latest
