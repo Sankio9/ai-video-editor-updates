@@ -1,0 +1,97 @@
+name: R2.0.5 independent graphics Beta candidate
+on:
+  push:
+    branches: [main]
+    paths: ['release/r205-ui-semantic-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r205-beta
+  cancel-in-progress: false
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate exact request and preserve Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          actual=json.load(open('release/r205-ui-semantic-request.json'))
+          assert actual == {
+            'version':'2.0.5',
+            'source_sha':'fe2d21573b47ac3b30ab3205af9a62bb87a4b006',
+            'requires_installed':'2.0.4',
+            'purpose':'Fix R2.0.4 Beta UI legacy visibility and V5 headline highlights; stable unchanged'
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          test "$(gh release view v2.0.4 --json isPrerelease --jq .isPrerelease)" = "true"
+          ! gh release view v2.0.5 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: fe2d21573b47ac3b30ab3205af9a62bb87a4b006
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download exact verified prior published Beta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p dist/prior
+          gh release download v2.0.4 -p AIVE_UPDATE.zip --dir dist/prior
+          python - <<'PY'
+          import hashlib,pathlib
+          archive=pathlib.Path("dist/prior/AIVE_UPDATE.zip")
+          expected="dc5fe714758ec388a18ac317b113452a33a6a65e5ae1101b7cda6c792308be9f"
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()==expected
+          print("PASS exact previous Beta archive",archive.stat().st_size)
+          PY
+      - name: Semantic and CEP mode-switch regressions
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r205/build_r205.py experimental/r20/r205/candidate/tools/r204_carton_layout.py
+          python -m unittest discover -s experimental/r20/r205/tests -p test_r205_semantics.py -v
+          node --check experimental/r20/r205/candidate/cep/r20_panel.js
+          node experimental/r20/r205/tests/test_r205_ui.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+      - name: Build hash-pinned two-file Beta delta
+        run: |
+          set -eu
+          python experimental/r20/r205/build_r205.py --previous dist/prior/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import hashlib,json,zipfile
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['version']=='2.0.5' and m['format']==1 and len(m['files'])==2
+              rows={x['path']:x for x in m['files']}
+              assert set(rows)=={'cep/r20_panel.js','tools/r204_carton_layout.py'}
+              assert rows['cep/r20_panel.js']['before_sha256']=='6b4c799a3e627fe015698073db8579d0255fed698d09e51492c20f21cb776baf'
+              assert rows['tools/r204_carton_layout.py']['before_sha256']=='caceca0f2d1f99729c7c18ae8b7a9b890281cd2689c9ff56ae7ec1d9c39f4a53'
+              for x in m['files']:
+                  assert hashlib.sha256(z.read('payload/'+x['path'])).hexdigest()==x['sha256']
+          print('PASS v2.0.5 2-file allowlist with before_sha256')
+          PY
+      - name: Release test candidate without changing Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          gh release create v2.0.5 dist/AIVE_UPDATE.zip \
+            --target fe2d21573b47ac3b30ab3205af9a62bb87a4b006 \
+            --title 'AI Video Editor R2.0.5 — V5 semantic and CEP UI (BETA)' \
+            --notes 'TEST/EXPERIMENTAL. Only install over v2.0.4 via in-app Beta updater. 2-file SHA256 update: hide legacy controls only in Independent mode, restore unchanged in Synced, improve semantic V5 highlight. No edits to 01/05 or MOGRT executor. Does NOT certify all P0 Premiere LIVE checks. Stable remains v1.9.13.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
