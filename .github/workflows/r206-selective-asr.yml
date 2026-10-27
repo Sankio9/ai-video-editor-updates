@@ -21,6 +21,8 @@ jobs:
         run: |
           python -m py_compile experimental/r20/r206/tools/r206_selective_asr.py
           python -m unittest discover -s experimental/r20/r206/tests -p 'test_r206_selective_asr.py' -v
+          python -m py_compile experimental/r20/r206/tools/r206_retranscribe.py
+          python -m unittest discover -s experimental/r20/r206/tests -p 'test_r206_retranscribe.py' -v
       - name: Keep module 01 untouched and stable config frozen
         run: |
           python - <<'PY'
