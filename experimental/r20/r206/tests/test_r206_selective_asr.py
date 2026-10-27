@@ -86,6 +86,26 @@ class TestR206(unittest.TestCase):
             build(diag(ev(1,'9930','REVIEW_NO_MATCH',90),
                        ev(2,'9930','REVIEW_NO_MATCH',95)))
 
+    def test_unknown_asr_status_is_blocked_not_silently_skipped(self):
+        x=ev(1,'9930','UNRECOGNIZED_ENGINE_STATE')
+        result=build(diag(x))
+        self.assertEqual(result["summary"]["flaggedEvents"],1)
+        self.assertEqual(result["summary"]["skippedSuggestedForAudit"],0)
+        self.assertEqual(result["blocked"][0]["reason"],"UNRECOGNIZED_MATCH_STATUS")
+        self.assertFalse(result["automaticCuttingAllowed"])
+
+    def test_missing_status_is_blocked(self):
+        x=ev(1,'9930','REVIEW_NO_MATCH')
+        del x["asr"]["matchStatus"]
+        result=build(diag(x))
+        self.assertEqual(result["blocked"][0]["reason"],"UNRECOGNIZED_MATCH_STATUS")
+
+    def test_contradictory_source_code_stops(self):
+        x=ev(1,'9930','REVIEW_NO_MATCH')
+        x["asr"]["source"]="9931"
+        with self.assertRaisesRegex(ValueError,"Contradictory"):
+            build(diag(x))
+
     def test_duplicate_cut_stop(self):
         with self.assertRaisesRegex(ValueError,"Duplicate CUT"):
             build(diag(ev(1,'9930','REVIEW_NO_MATCH'),
