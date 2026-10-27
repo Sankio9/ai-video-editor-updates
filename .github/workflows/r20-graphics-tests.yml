@@ -34,3 +34,16 @@ jobs:
           name: r201-NOT-FOR-INSTALL
           path: dist/R201_CANDIDATE_UPDATE.zip
 
+      - name: R2.0.2 beta channel regression checks
+        run: |
+          cd experimental/r20/beta_bridge
+          python -m unittest discover -s tests -p 'test_beta.py' -v
+          node --check cep/aive_updater_beta.js
+          python -m py_compile updater/beta.py
+      - name: Build SHA-pinned R2.0.2 beta bootstrap
+        run: python experimental/r20/beta_bridge/build_r202.py --output dist/R202_CANDIDATE_UPDATE.zip
+      - name: Archive beta bootstrap prototype (not a release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: r202-NOT-FOR-INSTALL
+          path: dist/R202_CANDIDATE_UPDATE.zip
