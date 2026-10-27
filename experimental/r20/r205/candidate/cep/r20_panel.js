@@ -129,7 +129,8 @@
    var line=document.createElement('div');line.id='r20ProgressText';global.appendChild(line);
    var main=document.querySelector('main');if(main)main.insertBefore(global,main.firstChild);
    for(var key in settings)if(settings.hasOwnProperty(key))(function(k){
-     var btn=E(k+'R193Start'),old=btn.onclick,config=settings[k],content=E('module'+(k==='subs'?'Subs':k==='name'?'Name':'Caps')).querySelector('.content');
+     var btn=E(k+'R193Start'),old=btn.onclick,config=settings[k],module=E('module'+(k==='subs'?'Subs':k==='name'?'Name':'Caps')),content=module.querySelector('.content');
+     var legacyTag=module.querySelector('summary .small'),originalTag=legacyTag?legacyTag.textContent:'';
      // Snapshot the untouched legacy UI before adding independent controls.
      // Hiding legacy elements must NOT remove or rewrite their event handlers,
      // styles, or state; switching back to Synced restores every original node.
@@ -150,6 +151,7 @@
      wrap.appendChild(mode);wrap.appendChild(position);position.style.display='none';
      content.insertBefore(wrap,btn);content.insertBefore(conflictBox,btn.nextSibling);content.insertBefore(hint,btn.nextSibling);
      mode.onchange=function(){var independent=mode.value==='independent';position.style.display=independent?'block':'none';setLegacyVisible(independent);
+       if(legacyTag)legacyTag.textContent=independent?'R2.0 Beta · '+config.track:originalTag;
        btn.textContent=independent?'Generează '+config.track+' din DOCX':({'subs':'Adaugă subtitrările','name':'Adaugă NameTag','caps':'Adaugă cartoanele'})[k];
        conflictBox.style.display='none';hint.textContent=independent?(k==='subs'?'PREVIEW TIMING — fără sincronism audio.':(k==='caps'?'Cartoane din DOCX 00 · V5 · EDITORIAL_PREVIEW; fără goluri de montaj.':'Grafică din DOCX 00 · EDITORIAL_PREVIEW; fără V1/A1.')):'Pe montajul deja validat.';};
      btn.onclick=function(){if(mode.value==='independent')run(k);else if(old)old.call(btn);};mode.onchange();
