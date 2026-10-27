@@ -1,0 +1,81 @@
+name: Publish R2.0.3 NameTag review hotfix (Beta only)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r203-review-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: r203-review-release
+  cancel-in-progress: false
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify frozen source request and stable channel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          data=json.load(open('release/r203-review-request.json'))
+          assert data == {
+            'version':'2.0.3',
+            'head_sha':'e50bc9e9cd343604065ba08fefc2f8ebc35d12c5',
+            'requires_installed':'2.0.2',
+            'purpose':'NameTag skip REVIEW explicit user confirmation; 2-file beta patch'
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          ! gh release view v2.0.3 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: e50bc9e9cd343604065ba08fefc2f8ebc35d12c5
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install isolated test dependency
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Execute format, review, safety and MOGRT regression tests
+        run: |
+          node --check experimental/r20/candidate/cep/r20_panel.js
+          node experimental/r20/tests/guard.test.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p 'test_r201_nametag.py' -v
+          python -m unittest discover -s tests_r20 -p 'test_r203_review.py' -v
+      - name: Build exact two-file SHA-256 manifest
+        run: |
+          python experimental/r20/hotfix/build_r203.py --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import json,zipfile,hashlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['format']==1 and m['version']=='2.0.3'
+              assert len(m['files'])==2
+              rows={x['path']:x for x in m['files']}
+              assert set(rows)=={'cep/r20_panel.js','tools/r20_graphics_plans.py'}
+              assert rows['cep/r20_panel.js']['before_sha256']=='440b84a2f01684f74884989de39100f03698d4c7c77ac2b63ddd19482de594b1'
+              assert rows['tools/r20_graphics_plans.py']['before_sha256']=='df0b5f4ab1aa87274305222e51ea02b5adc44b26b72d72155ce38e4a2d52c9af'
+              for p,row in rows.items():
+                  assert hashlib.sha256(z.read('payload/'+p)).hexdigest()==row['sha256']
+          print('PASS: R2.0.3 two-file SHA-256 manifest')
+          PY
+      - name: Publish Beta prerelease without changing Latest Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create v2.0.3 dist/AIVE_UPDATE.zip \
+            --target e50bc9e9cd343604065ba08fefc2f8ebc35d12c5 \
+            --title 'AI Video Editor R2.0.3 — NameTag Review Gate (Beta)' \
+            --notes 'Experimental only. Update from v2.0.2 through the in-Premiere Beta updater. NameTag with missing editorial identity is explicitly reported by CUT and requires user approval for skipping before V4 insertion. No fabricated names. Montage, subtitles, cartoons and VO modules unchanged. Premiere LIVE pending.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
