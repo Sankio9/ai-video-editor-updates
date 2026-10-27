@@ -40,7 +40,7 @@ class TestR201(unittest.TestCase):
         p=Path(self.t.name)/'merged.docx';doc.save(p)
         markers=planner._editorial_markers(p)
         self.assertEqual(markers,[(1,'editorial',None),(1,'source','1234'),
-                                  (3,'editorial',None),(3,'source','5678'),
+                                  (3,'ambience',None),(3,'source','5678'),
                                   (4,'editorial',None),(4,'source','1234')])
         segments=[seg(1,1,'1234','Ana Ștefănescu','Directoare'),
                   seg(2,2,'1234','Ana Ștefănescu','Directoare'),
