@@ -1,0 +1,88 @@
+name: Publish pinned R2.0.2 Beta Bridge prerelease
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'release/r202-beta-bridge-request.json'
+permissions:
+  contents: write
+concurrency:
+  group: aive-r202-beta-bridge
+  cancel-in-progress: false
+jobs:
+  publish-beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate published candidate and protect stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import json
+          o=json.load(open('release/r202-beta-bridge-request.json'))
+          assert o == {
+            "version":"2.0.2",
+            "source_sha":"877e4c42c09b3aa0cca71d3bda26ff1b7850cc08",
+            "requires_installed":"2.0.0",
+            "purpose":"Beta opt-in updater plus NameTag fix; Premiere test only"
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          if gh release view v2.0.2 >/dev/null 2>&1; then
+            echo 'Refusing to replace existing v2.0.2 release'
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: 877e4c42c09b3aa0cca71d3bda26ff1b7850cc08
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install small test dependency
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Validate R2.0.1 NameTag fix and R2.0.2 updater isolation
+        run: |
+          node --check experimental/r20/beta_bridge/cep/aive_updater_beta.js
+          python -m py_compile experimental/r20/beta_bridge/updater/beta.py
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p test_r201_nametag.py -v
+          cd ../beta_bridge
+          python -m unittest discover -s tests -p test_beta.py -v
+      - name: Build pinned delta, verify SHA-256 and four-file manifest
+        run: |
+          python experimental/r20/beta_bridge/build_r202.py --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import hashlib,json,zipfile
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            manifest=json.loads(z.read('manifest.json'))
+            assert manifest['format']==1 and manifest['version']=='2.0.2'
+            assert len(manifest['files'])==4
+            files={x['path']:x for x in manifest['files']}
+            assert set(files)=={
+              'cep/index.html','cep/aive_updater_beta.js',
+              'updater/beta.py','tools/r20_graphics_plans.py'}
+            assert files['cep/index.html']['before_sha256']=='af6e84fcf6ce746ac34d02174a398481f618efc851c087061dfb1a2bcbc92023'
+            assert files['tools/r20_graphics_plans.py']['before_sha256']=='37ec5e19ae2223d079263cbac9763fe2cb915593f9d4e37151cff7d522fa562f'
+            for row in manifest['files']:
+              assert hashlib.sha256(z.read('payload/'+row['path'])).hexdigest()==row['sha256']
+          print('R2.0.2: four-file SHA-256 update manifest PASS')
+          PY
+      - name: Publish prerelease without changing Latest stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          gh release create v2.0.2 dist/AIVE_UPDATE.zip \
+            --target 877e4c42c09b3aa0cca71d3bda26ff1b7850cc08 \
+            --title 'AI Video Editor R2.0.2 — Beta updater + NameTag fix (TEST)' \
+            --notes 'Experimental only: upgrade directly from local v2.0.0. Includes opt-in Stable/Beta selector (Stable default) and NameTag parser hotfix R2.0.1. SHA-256 checks + backup/rollback through existing updater. Premiere LIVE validation pending. Stable remains v1.9.13.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
