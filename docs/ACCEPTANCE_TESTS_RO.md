@@ -56,3 +56,11 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [ ] **NECONFIRMAT:** readback numeric 8/8 MOGRT și proprietăți precise `Bold Words` / text / durate; comparația 8/8 cu DOCX, toate cele 4 rânduri, păstrarea exactă a V1/A1/V3/V4 înainte/după, V5 ocupată, anulare și rollback.
 - [ ] **EDITORIAL REVIEW:** highlightul din exemplar prinde `ELEVI ÎNVAȚĂ` și `ȘCOALĂ`, dar nu prioritizează conceptul esențial `SISTEM DUAL`. Este un defect de **selectare semantică**, nu o dovadă de eroare de inserare MOGRT.
 - **Stare 04:** `LIVE VISUAL PARTIAL PASS`; NU marca P0 complet și NU promova Beta la Stable.
+
+
+### Evidență suplimentară LIVE — READBACK modul 04 (captura 2026-10-27 16:27:34)
+- [x] **PREMIERE LIVE READBACK PASS:** panoul CEP arată explicit `[PREMIERE READBACK] READBACK PASS: 8 MOGRT pe V5 — EDITORIAL_PREVIEW` pentru 04 → Independent din scenariu → De la începutul pistei (00:00).
+- [x] **PREMIERE LIVE VISUAL PARTIAL:** captura Program Monitor anterioară arată cartoanele pe V5, 2 rânduri, Orange/Bold și Unicode RO corect.
+- [ ] **ÎNCĂ NECONFIRMAT:** comparație readback **conținutul fiecărui MOGRT/parametrii Bold** cu DOCX original; snapshot non-distructiv pe alte piste, V5 ocupată, cancel și rollback; accentuare semantică editorial optimă. READBACK PASS de cantitate nu dovedește aceste proprietăți.
+- [ ] **UX bug confirmat vizual:** în modul Independent, încă apar controale și ajutor legacy R1.7 (ex. «Verifică rezultatul», «Generează planul R17 și apasă Verifică.»). Cerință patch: ascunde numai blocurile legacy în modul Independent și restaurează-le identic în modul «Pe montajul existent»; nu schimba executoarele MOGRT.
+- **Status actual 04:** inserare și număr LIVE PASS 8/8; aspect LIVE PASS parțial; suita P0 completă încă deschisă.
