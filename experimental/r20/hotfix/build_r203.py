@@ -11,12 +11,12 @@ HERE=Path(__file__).resolve().parents[1]
 FILES={
   "cep/r20_panel.js":(
     HERE/"candidate"/"cep"/"r20_panel.js",
-    "506dc87dc2b982fadb1cb3b7f33e25103b8529df613ece9f11de73d634934614",
+    "6b4c799a3e627fe015698073db8579d0255fed698d09e51492c20f21cb776baf",
     "440b84a2f01684f74884989de39100f03698d4c7c77ac2b63ddd19482de594b1"
   ),
   "tools/r20_graphics_plans.py":(
     HERE/"candidate"/"tools"/"r20_graphics_plans.py",
-    "bf8f4dfcf0a1fbee2b9d770276c18b4d010d736b032be8840efb0188ae8b0356",
+    "60b60012536cef103094ed33d2f31c05a9aec10a6bcbeb2149bca0c7c89a6698",
     "df0b5f4ab1aa87274305222e51ea02b5adc44b26b72d72155ce38e4a2d52c9af"
   )
 }
