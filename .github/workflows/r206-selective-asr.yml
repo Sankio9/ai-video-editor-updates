@@ -30,7 +30,7 @@ jobs:
           node-version: '20'
       - name: Check Premiere Project Panel read-only scanner
         run: |
-          node --check experimental/r20/r206/cep/jsx/r206_project_scan.jsx
+          node --check < experimental/r20/r206/cep/jsx/r206_project_scan.jsx
           node experimental/r20/r206/tests/test_r206_project_scan_mock.js
       - name: Keep module 01 untouched and stable config frozen
         run: |
