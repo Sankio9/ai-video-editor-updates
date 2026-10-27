@@ -11,7 +11,7 @@ VERSION="2.0.0"
 FILES={
     "cep/index.html":("af6e84fcf6ce746ac34d02174a398481f618efc851c087061dfb1a2bcbc92023",
                       "6530eb2cf1fab4167e8263a661515bf5ddd68a0b8d0a4b9ec1ae328afb37a797"),
-    "cep/r20_panel.js":("1fd3e2e5254bc77442ff0b54d824ee72b28cbeb87b993282f1e79f7c5250454c",None),
+    "cep/r20_panel.js":("440b84a2f01684f74884989de39100f03698d4c7c77ac2b63ddd19482de594b1",None),
     "cep/jsx/r20_graphics.jsx":("d9a704f50a9f221fb93f15884c3cda20e328d3aa0ffbd7a6cced202ebe6a52a2",None),
     "tools/r20_graphics_plans.py":("37ec5e19ae2223d079263cbac9763fe2cb915593f9d4e37151cff7d522fa562f",None),
 }
