@@ -107,3 +107,11 @@ Pe «Bubuieci», R1.9.13 a refuzat montajul pentru 10/19 sincronuri (9 accept, 8
 - Dovezi locale: 7 teste generator + 11 layout + 18 Premiere mock + 4 updater SHA/rollback = 40 LOCAL PASS; sintaxă JSX/Python PASS. Nu echivalează cu Adobe Premiere LIVE PASS.
 - Branch experimental: feature/r20-independent-graphics-gate, cu experimental/r20/tools/r204_carton_layout.py, INTEGRATION_R204.patch și R204_CHECKPOINT_RO.md. SHA plan local c89e40ec345b51fb5a44f46fdad69b6d088371492e544da2ac1dbee385f8de0d; helper local caceca0f2d1f99729c7c18ae8b7a9b890281cd2689c9ff56ae7ec1d9c39f4a53.
 - Blocant de distribuție: test real în Premiere 25.6.4 pe proiect/secvență de probă (Unicode, aspect și culoare, V5 liberă/ocupată, readback, rollback). Fără update public stabil până la acceptare. Ultimul release stabil verificat rămâne v1.9.13.
+
+## R2.0.4 Beta PUBLICAT (2026-10-27)
+- GitHub prerelease confirmat: https://github.com/Sankio9/ai-video-editor-updates/releases/tag/v2.0.4 (NU latest stable); asset AIVE_UPDATE.zip, 8219 octeți, SHA-256 dc5fe714758ec388a18ac317b113452a33a6a65e5ae1101b7cda6c792308be9f.
+- Upgrade incremental **numai de la R2.0.3** prin updater Beta existent în Premiere. Manifest exact două fișiere: tools/r20_graphics_plans.py (before_sha256 60b60012536cef103094ed33d2f31c05a9aec10a6bcbeb2149bca0c7c89a6698) și tools/r204_carton_layout.py (nou).
+- Sursa frozen pe commit bc2eea471a072aeffdcdb6a5636ae2e9ee2c573b din feature/r20-independent-graphics-gate; workflow .github/workflows/r204-cartoane-prerelease.yml; request release/r204-cartoane-request.json. Păstrează R2.0.3 NameTag review gate.
+- LOCAL: 22 teste Python + 18 mock Premiere PASS; GitHub Actions a publicat doar după teste sintetice layout, regresie NameTag R2.0.1/R2.0.3, mock MOGRT și manifest SHA. NU echivalează cu test LIVE Adobe Premiere.
+- Nou modul 04: rânduri minimum fezabil (maxim 4×33), Orange/Bold semantic pentru cifre/procente/termeni, text editorial neschimbat, timing EDITORIAL_PREVIEW, fără goluri de montaj. Modulele 01/02/03/05 și executorii MOGRT nemodificați; V5 ocupată rămâne non-distructiv.
+- NEXT: Premiere 25.6.4 pe COPIE proiect/secvență TEST, actualizare prin Beta și validare 8 cartoane, Orange/Bold, Unicode, readback, V5 ocupată, rollback, piste neatinsese. Stable rămâne v1.9.13.
