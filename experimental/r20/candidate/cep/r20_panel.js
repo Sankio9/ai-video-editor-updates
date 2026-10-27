@@ -42,8 +42,10 @@
        if(plan.docx_sha256!==docHash||plan.module!==module||plan.totalItems!==r.count)throw Error('Planul R2.0 este inconsistent');
        if(!Array.isArray(plan.skipped)||!Array.isArray(r.skipped)
           ||JSON.stringify(plan.skipped)!==JSON.stringify(r.skipped)
-          ||plan.reviewRequired!==(plan.skipped.length>0)
-          ||r.reviewRequired!==plan.reviewRequired)throw Error('Raportul de revizuire NameTag este inconsistent');
+          ||plan.reviewRequired!==plan.skipped.some(function(x){return x.kind==='REVIEW_MISSING_IDENTITY';})
+          ||r.reviewRequired!==plan.reviewRequired
+          ||plan.reviewPolicy!==(plan.reviewRequired?'EXPLICIT_SKIP_APPROVAL':(plan.skipped.length?'AUTO_AMBIENCE_SKIP':'NONE')))
+         throw Error('Raportul de revizuire NameTag este inconsistent');
        if(module!=='03'&&plan.reviewRequired)throw Error('Omitere neașteptată în modul '+module);
        callback(null,{path:outfile,sha:docHash,items:r.count,groups:r.groups,
          timing:r.timing,skipped:plan.skipped,reviewRequired:plan.reviewRequired});
@@ -66,17 +68,24 @@
    busy=true;E('r20Conflict_'+key).style.display='none';progress('Pregătesc '+cfg.num+' din DOCX',0,0);
    generate(cfg.num,doc,function(err,plan){if(err){status(key,'OPRIT: '+err.message);finish();return;}
      var skipReport='';
-     if(cfg.num==='03'&&plan.reviewRequired){
-       skipReport=plan.skipped.map(function(x){return String(x.cutId)+' (paragraful '+String(x.paragraph)+') — '+String(x.reason);}).join('\n');
-       var question='REVIZUIRE EDITORIALĂ NAMETAG — '+plan.skipped.length+' CUT-uri fără nume/funcție verificabile:\n'+
-         skipReport+'\n\nSe vor genera numai cele '+plan.items+' NameTag-uri valide pe V4.'+
-         '\nNicio identitate nu va fi inventată. Această aprobare se referă doar la proiectul TEST.'+
-         '\n\nAccepți EXPLICIT omiterea celor de mai sus și inserarea NameTag-urilor valide?';
-       if(!window.confirm(question)){
-         status(key,'OPRIT: omiterea celor '+plan.skipped.length+' identificări NU a fost aprobată. Nicio inserare V4.\n'+skipReport);
-         finish();return;
+     if(cfg.num==='03'&&plan.skipped.length){
+       skipReport=plan.skipped.map(function(x){return String(x.kind)+' · '+String(x.cutId)+
+         ' (paragraful '+String(x.paragraph)+', sursa '+String(x.sourceCode||'?')+') — '+String(x.reason);}).join('\n');
+       if(plan.reviewRequired){
+         var reviewItems=plan.skipped.filter(function(x){return x.kind==='REVIEW_MISSING_IDENTITY';});
+         var question='REVIZUIRE EDITORIALĂ NAMETAG — '+reviewItems.length+' identificări NECONFIRMATE:\n'+
+           reviewItems.map(function(x){return String(x.cutId)+' · sursa '+String(x.sourceCode||'?');}).join('\n')+
+           '\n\nVor fi create numai '+plan.items+' NameTag-uri valide pe V4.'+
+           '\nAMB marcate SKIP nu primesc burtieră. Nicio identitate nu va fi inventată.'+
+           '\n\nAprobi OMITEREA identificărilor neconfirmate în proiectul TEST?';
+         if(!window.confirm(question)){
+           status(key,'OPRIT: omiterile SINCRON nu sunt aprobate. Nicio inserare V4.\n'+skipReport);
+           finish();return;
+         }
+         status(key,'REVIEW APROBAT: '+reviewItems.length+' identificări fără burtieră.\n'+skipReport);
+       }else{
+         status(key,'SKIP_AMBIENCE: '+plan.skipped.length+' fragmente de ambianță fără NameTag.\n'+skipReport);
        }
-       status(key,'REVIZUIRE APROBATĂ: '+plan.skipped.length+' CUT-uri fără burtieră.\n'+skipReport);
      }
      var n=0,tok='';
      function abort(reason){
@@ -94,7 +103,9 @@
        function next(){if(n>=plan.items){progress('Verific readback MOGRT',n,plan.items);
            evalR20('verify',[plan.path,tok],function(ex,done){
              if(ex||!done||!done.ok){abort('READBACK FINAL: '+(ex?ex.message:done&&done.message||'răspuns invalid'));return;}
-             status(key,'[PREMIERE READBACK] '+done.message+(skipReport?'\n[REVIEW / SKIP APROBAT] '+plan.skipped.length+' CUT-uri fără burtieră:\n'+skipReport:''));finish();});return;}
+             status(key,'[PREMIERE READBACK] '+done.message+
+               (skipReport?'\n['+(plan.reviewRequired?'REVIEW APROBAT':'SKIP_AMBIENCE')+
+               '] '+plan.skipped.length+' fragmente fără NameTag:\n'+skipReport:''));finish();});return;}
          if(sha(doc)!==plan.sha){abort('DOCX schimbat în timpul inserării');return;}
          progress('Inserez '+cfg.track+' · '+plan.timing,n,plan.items);
          evalR20('buildOne',[plan.path,tok,n],function(ex,out){if(ex||!out||!out.ok){abort('Inserarea '+(n+1)+'/'+plan.items+': '+(ex?ex.message:out&&out.message||'răspuns invalid'));return;}
