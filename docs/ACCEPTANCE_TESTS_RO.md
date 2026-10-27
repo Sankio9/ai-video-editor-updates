@@ -86,3 +86,10 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] `r206_retranscribe.py` oferă procesare locală opt-in a ferestrelor ASR, cu FFmpeg/ffprobe și model CTranslate2 preinstalat; cuvintele au timp ABSOLUT față de sursă. Artefactele sunt candidate marcate `REVIEW_REQUIRED`, nu tăieturi.
 - [x] 12 teste suplimentare cu FFmpeg/ASR simulate trecute în GitHub CI run `40556352429`; împreună cu 18 teste planner = 30 PASS, fără audio real.
 - [ ] Benchmark/validare RTX 3070 și audio ro/ru din reportaj, quality gates împotriva halucinațiilor, mapping Project Panel offline/duplicat, apelare prin **butonul 01** și verificare LIVE Premiere (înainte de orice release stable). Nu marca R2.0.6 instalabilă.
+
+
+## R2.0.6 — Project Panel / mapping surse (CI, 27 octombrie 2026)
+- [x] **CI PASS** https://github.com/Sankio9/ai-video-editor-updates/actions/runs/40558090871: 18 teste planificator ASR, 12 teste executor local, 17 teste recursive inventory și un test mock JSX read-only. **47 Python + 1 Node mock PASS**, fără Premiere LIVE.
+- [x] **Inventar surse recursive** pentru orice bin, cu `ProjectItem.getMediaPath()`, `isOffline()`, `nodeId` și tip CLIP/BIN/FILE/ROOT; filtrează secvențele. Codul de 4 cifre provine exclusiv din numele media, nu din cifrele din directoare, cu detectarea codului contradictoriu display vs disc.
+- [x] **Blocare conservatoare:** cod sursă lipsă -> `MISSING_RED`, multiple surse -> `DUPLICATE_RED`, offline / cod contradictoriu / media inaccesibilă -> `MEDIA_ISSUE_RED`. Rescan runner poate primi inventarul Project Panel prin `--project-inventory`, fără mapare manuală `--source-map`.
+- [ ] **BLOCANT LIVE:** scannerul .jsx și adapterul local sunt pe branch candidat, **neactivate în panoul 01**; validare pe Project Panel Premiere real, offline/missing/duplicat, portarea în butonul 01, CUDA audio test și rollback rămân deschise. Niciun release R2.0.6 nu a fost publicat.
