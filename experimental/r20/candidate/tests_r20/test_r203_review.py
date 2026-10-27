@@ -41,7 +41,7 @@ class TestR203ReviewGate(unittest.TestCase):
             code='9974' if ambient else str(9900+i)
             para=('AMB: Vânzare plăcinte împreună cu o colegă' if ambient else
                   'SINCRON: Persoana %s, Elev' % (i+1))
-            doc.add_paragraph(para+'\\n'+code+'\\n00.08–00.16')
+            doc.add_paragraph(para+'\n'+code+'\n00.08–00.16')
             segments.append(seg(i+1,i,code,
                 None if ambient else 'Persoana '+str(i+1),
                 None if ambient else 'Elev'))
