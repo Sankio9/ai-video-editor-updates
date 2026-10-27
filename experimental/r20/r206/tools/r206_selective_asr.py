@@ -20,6 +20,7 @@ RESCAN_STATUSES = frozenset((
     "REVIEW_WEAK_BOUNDARY", "REVIEW_WEAK_TRANSCRIPT",
     "REVIEW_NO_MATCH", "REVIEW_INVALID_BOUNDS",
     "REVIEW_ALTERNATIVE_OCCURRENCE", "REVIEW_OUTSIDE_SEARCH_RADIUS",
+    "REVIEW_LARGE_SHIFT",
 ))
 WHOLE_SOURCE_STATUSES = frozenset((
     "REVIEW_WEAK_TRANSCRIPT", "REVIEW_NO_MATCH",
@@ -102,6 +103,7 @@ def build(diagnostic):
     if not isinstance(events, list) or not 0 < len(events) <= 2000:
         raise ValueError("Invalid event count")
     per_source = defaultdict(list)
+    blocked_unknown = defaultdict(list)
     known_ids, lengths, observed = set(), {}, defaultdict(list)
     for e in events:
         if not isinstance(e, dict) or not isinstance(e.get("id"), str) or not e["id"]:
@@ -115,6 +117,8 @@ def build(diagnostic):
         a = e.get("asr")
         if not isinstance(a, dict):
             raise ValueError("ASR diagnostic missing")
+        if a.get("source") is not None and str(a["source"]) != code:
+            raise ValueError("Contradictory ASR source code: " + code)
         duration = a.get("sourceDuration")
         if not finite(duration) or not .25 <= duration <= MAX_SOURCE_DURATION_SECONDS:
             raise ValueError("Untrusted source duration: " + code)
@@ -125,11 +129,18 @@ def build(diagnostic):
         if not isinstance(status, str):
             raise ValueError("Invalid match status")
         observed[status].append(e["id"])
-        if status not in RESCAN_STATUSES:
-            continue
-        per_source[code].append(e)
+        if status in RESCAN_STATUSES:
+            per_source[code].append(e)
+        elif status not in ("REVIEW_SUGGESTED", "AI_MATCHED"):
+            # Unknown statuses must NOT disappear from an audit as if accepted.
+            blocked_unknown[code].append(e["id"])
 
-    sources,blocked = [],[]
+    sources,blocked = [],[
+        {"sourceCode": code, "cutIds": sorted(ids),
+         "reason": "UNRECOGNIZED_MATCH_STATUS",
+         "requiredAction": "EDITORIAL_DIAGNOSTIC_REVIEW"}
+        for code, ids in sorted(blocked_unknown.items())
+    ]
     for code, affected in sorted(per_source.items()):
         duration = lengths[code]
         windows, rejected = [], []
@@ -165,8 +176,9 @@ def build(diagnostic):
         "maxFullSourceSeconds": MAX_FULL_SOURCE_SECONDS,
         "rescans": sources, "blocked": blocked,
         "summary": {
-            "totalEvents": len(events), "flaggedEvents": sum(len(v) for v in per_source.values()),
-            "skippedSuggestedForAudit": len(events)-sum(len(v) for v in per_source.values()),
+            "totalEvents": len(events),
+            "flaggedEvents": sum(len(v) for v in per_source.values()) + sum(len(v) for v in blocked_unknown.values()),
+            "skippedSuggestedForAudit": len(events)-sum(len(v) for v in per_source.values())-sum(len(v) for v in blocked_unknown.values()),
             "rescanSources": len(sources), "blockedSources": len(blocked),
             "statusCounts": {k:len(v) for k,v in sorted(observed.items())},
         },
