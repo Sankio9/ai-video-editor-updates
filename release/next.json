@@ -1,24 +1,28 @@
 {
-  "version": "1.9.12",
-  "builder": "scripts/build_r1912.py",
+  "version": "1.9.13",
+  "builder": "scripts/build_r1913.py",
   "requires": "1.9.11",
-  "prerelease": true,
-  "purpose": "Untimed <=8min full ASR; partial IN/OUT ASR window hints; no unsafe TC fallback",
+  "purpose": "Rescue weak-boundary matches using full-text ASR, support missing timecodes safely, export failure diagnostic JSON. Never use reporter TC as final IN/OUT.",
   "files": [
     {
       "path": "tools/r193_pipeline.py",
-      "sha256": "44d18e3ba2d79327545334d987de21d6e6e220309226313a2fdb83db080f932d",
-      "before_sha256": "b5c9ebba6bf9e1baa204868751c9a232392f9ad16ae488dc7aa394835777a856"
+      "before_sha256": "b5c9ebba6bf9e1baa204868751c9a232392f9ad16ae488dc7aa394835777a856",
+      "sha256": "8b49231f2c534f87ac2486f407fbc4466b1a2c77ee99961d0ed17d500959080e"
     },
     {
       "path": "tools/r193_docx_reader.py",
-      "sha256": "2d0c4c74d01ec22a678cf7a5f2cad942b0c392af9cbc1e58d55b30481b46b819",
-      "before_sha256": "c8b682a2fd1f7b18273227914e84e8e1547afd9f1f4c7e0bd1ecd86ba851a822"
+      "before_sha256": "c8b682a2fd1f7b18273227914e84e8e1547afd9f1f4c7e0bd1ecd86ba851a822",
+      "sha256": "2d0c4c74d01ec22a678cf7a5f2cad942b0c392af9cbc1e58d55b30481b46b819"
     },
     {
       "path": "tools/r1912_optional_tc.py",
-      "sha256": "c5d3178a758143cba942c34f5dd6f98600c798eac7334a334011de55c05cffd0",
-      "before_sha256": null
+      "before_sha256": null,
+      "sha256": "c5d3178a758143cba942c34f5dd6f98600c798eac7334a334011de55c05cffd0"
+    },
+    {
+      "path": "tools/r1913_robust_match.py",
+      "before_sha256": null,
+      "sha256": "873604fd8298e93eab52276dc60979e14c34c5d37485fbedd2486aa1893f330a"
     }
   ]
 }
