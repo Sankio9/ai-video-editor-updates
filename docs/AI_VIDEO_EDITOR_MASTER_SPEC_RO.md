@@ -75,3 +75,7 @@ Categoriile trebuie să aibă selector de mod inteligibil; **nu se schimbă auto
 
 ## 10. Principiu de dezvoltare pentru orice chat nou
 **Mai întâi citește acest document, verifică release-ul REAL și sursele locale relevante, apoi modifică doar punctul necesar.** Dacă lipsesc fișiere/capabilități, declară clar, nu presupune. Nu bloca independent grafica pentru o problemă de ASR la montaj.
+
+
+## Regula actualizată — NameTag independent și blocuri AMB (2026-10-27)
+În 03 Independent, un antet editorial `AMB` pentru replici de ambianță fără nume/funcție **nu trebuie tratat drept NameTag lipsă care blochează întreaga generare**. Se identifică antetul AMB și sursa din DOCX; doar cu potrivire explicită se notează `SKIP_AMBIENCE`, vizibil, cu CUT/paragraf/cod, fără MOGRT pentru ambianță. Pentru `SINCRON` sau antet ambiguu cu persoană neidentificată se notează `REVIEW_MISSING_IDENTITY`: consimțământ editorial explicit pentru omitere înainte de scrierea pe V4 (altfel STOP); NIMIC inventat. Cod sursă contradictoriu => STOP. Celelalte NameTag-uri valide pot fi generate pe V4, fără V1/A1, iar V3 rămâne neatinsă. Exemplu local: 8 identificări/2 fragmente ambianță, testele sintetice au trecut, validarea LIVE în Premiere rămâne obligatorie.
