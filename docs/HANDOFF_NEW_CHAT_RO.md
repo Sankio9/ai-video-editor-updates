@@ -49,3 +49,11 @@ Pe «Bubuieci», R1.9.13 a refuzat montajul pentru 10/19 sincronuri (9 accept, 8
 - Fix: compară numeric `runner.ver(current) == (1,9,13)` și la rollback `runner.ver(restored_version) == (1,9,13)`; acceptă formele cu și fără `v` pentru R1.9.13/R2.0.0. Alte versiuni rămân blocate.
 - Teste locale PASS: sintaxă Python, variante `v1.9.13`/`1.9.13`, rollback pentru `v2.0.0`/`2.0.0`, refuz altor versiuni, pin SHA updater și release neschimbate.
 - **Nu este test LIVE Premiere**; instalarea completă încă necesită confirmarea utilizatorului și verificările de preflight de hash pe ambele rădăcini CEP. Nu rula vechiul lansator.
+
+## 2026-10-27 — Primul test real independent 02 (Premiere R2.0)
+- Utilizatorul a instalat R2.0 beta și a raportat panou CEP funcțional în Premiere 25.6.4. Secvența de test a fost creată separat; V1/A1 fără montaj necesar.
+- Modul 02 setat `Independent din scenariu`, poziție `De la începutul pistei (00:00)`. Screenshot al panoului afișează exact `[PREMIERE READBACK] READBACK PASS: 43 MOGRT pe V3 — SCRIPT_PREVIEW`.
+- Codul `experimental/r20/candidate/cep/jsx/r20_graphics.jsx` confirmă că funcția `verify()` controlează numărul clipurilor, start/end, raportul 16:9, textul MOGRT și Font Style, nu doar afișează un mesaj static. Statut: **PREMIERE READBACK PASS** pentru modul 02; **validarea vizuală în Program Monitor și verificarea timeline-ului încă PENDING**.
+- Defect UI identificat în screenshot: în modul Independent rămân afișate controalele legacy `Verifică rezultatul`, `Selectează planul R1514 și apasă Verifică` și labelul vechi `R1.5.15`. Acestea aparțin traseului synced/legacy; nu trebuie acționate ca verificare a inserării R2.0. Candidatul UI următor trebuie să ascundă controalele/instrucțiunile legacy doar când modul=independent și să le restabilească în synced; nu schimba motorul validat.
+- Următoarea acțiune indispensabilă a utilizatorului: screenshot cu timeline-ul V3 (MOGRT, gap-uri/grupuri) și Program Monitor la moment cu subtitrare; verifică rendering/diacritice, nu doar readback API.
+- Niciun test LIVE 03/04 completat. 05 VO HOLD. Stable v1.9.13 neatins.
