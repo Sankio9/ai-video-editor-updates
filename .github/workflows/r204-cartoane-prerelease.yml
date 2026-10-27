@@ -1,0 +1,85 @@
+name: Publish R2.0.4 compact cartoane (Beta only)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r204-cartoane-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: r204-carton-release
+  cancel-in-progress: false
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact request, pinned source, protect stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          j=json.load(open('release/r204-cartoane-request.json',encoding='utf8'))
+          assert j == {'version':'2.0.4','source_sha':'bc2eea471a072aeffdcdb6a5636ae2e9ee2c573b','requires_installed':'2.0.3','purpose':'V5 compact semantic highlight, two-file Beta delta, stable unchanged'}
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          if gh release view v2.0.4 >/dev/null 2>&1; then
+            echo 'Refusing to replace existing v2.0.4 release' >&2; exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: bc2eea471a072aeffdcdb6a5636ae2e9ee2c573b
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install isolated synthetic-test dependency
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Validate 04 and prevent 03 NameTag regression
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r204/candidate/tools/*.py
+          python -m unittest discover -s experimental/r20/r204/tests -p 'test_r204.py' -v
+          mkdir -p experimental/r20/r204/candidate/tests_r20 experimental/r20/r204/candidate/cep
+          cp experimental/r20/candidate/tests_r20/test_r201_nametag.py experimental/r20/r204/candidate/tests_r20/
+          cp experimental/r20/candidate/tests_r20/test_r203_review.py experimental/r20/r204/candidate/tests_r20/
+          cp experimental/r20/candidate/cep/r20_panel.js experimental/r20/r204/candidate/cep/
+          python -m unittest discover -s experimental/r20/r204/candidate/tests_r20 -p 'test_r201_nametag.py' -v
+          python -m unittest discover -s experimental/r20/r204/candidate/tests_r20 -p 'test_r203_review.py' -v
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+      - name: Build exact two-file beta ZIP with pinned prior SHA
+        run: |
+          set -eu
+          python experimental/r20/r204/build_r204.py --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import hashlib,json,zipfile
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['version']=='2.0.4' and m['format']==1
+              r={x['path']:x for x in m['files']}
+              assert set(r)=={'tools/r20_graphics_plans.py','tools/r204_carton_layout.py'}
+              assert r['tools/r20_graphics_plans.py']['before_sha256']=='60b60012536cef103094ed33d2f31c05a9aec10a6bcbeb2149bca0c7c89a6698'
+              assert r['tools/r204_carton_layout.py']['before_sha256'] is None
+              for name,row in r.items():
+                  assert hashlib.sha256(z.read('payload/'+name)).hexdigest()==row['sha256']
+          print('R2.0.4 two-file SHA256 verified')
+          PY
+      - name: Publish Beta prerelease only
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.0.4 dist/AIVE_UPDATE.zip \
+            --target bc2eea471a072aeffdcdb6a5636ae2e9ee2c573b \
+            --title 'AI Video Editor R2.0.4 — Cartoane compacte (BETA)' \
+            --notes 'EXPERIMENTAL ONLY. Upgrade from v2.0.3 through the in-Premiere Beta updater. V5 smart semantic Orange/Bold and compact rows 1–4; R2.0.3 NameTag review preserved. No changes to 01, 02, 03, 05 or MOGRT executor. SHA-256 manifest, non-destructive rollback via existing updater. Premiere LIVE rendering still requires validation. Stable v1.9.13 remains unchanged.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
