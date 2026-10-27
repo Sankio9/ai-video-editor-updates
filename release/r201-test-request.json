@@ -1,0 +1,6 @@
+{
+  "version": "2.0.1",
+  "head_sha": "e6b2167d9ea4706ad993cdb5442d601c385107eb",
+  "base": "2.0.0",
+  "purpose": "NameTag parser hotfix only; prerelease test"
+}
