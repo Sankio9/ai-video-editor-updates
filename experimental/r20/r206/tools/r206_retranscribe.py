@@ -9,7 +9,9 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import subprocess
+from collections import Counter
 import tempfile
 from pathlib import Path
 
@@ -38,13 +40,13 @@ def validate(request,media_map):
     out=[];used=set();total=0
     for row in sources:
         code=row.get("sourceCode") if isinstance(row,dict) else None
-        if not isinstance(code,str) or not code.isdigit() or len(code)!=4 or code in used:
+        if not isinstance(code,str) or not re.fullmatch(r"[0-9]{4}",code) or code in used:
             raise ValueError("Duplicate/invalid source code")
         used.add(code)
         p=media_map.get(code)
         if not isinstance(p,str) or not p:raise ValueError("Offline/unmapped source "+code)
         file=Path(p)
-        if not file.is_file() or file.suffix.casefold() not in MEDIA_EXT:
+        if file.is_symlink() or not file.is_file() or file.suffix.casefold() not in MEDIA_EXT:
             raise ValueError("Missing/invalid original media for "+code)
         if file.stat().st_size<=0:raise ValueError("Empty original source "+code)
         duration=row.get("sourceDurationSeconds")
@@ -112,9 +114,38 @@ def make_whisper(model_dir,device="cuda",compute_type="int8_float16"):
 
 
 def repeated_phrases(words):
+    """Linear-time warning heuristic, not a proof of hallucination."""
     terms=[str(w["text"]).lower().strip(".,!?:; \t") for w in words]
-    ngrams=[tuple(terms[i:i+3]) for i in range(max(0,len(terms)-2))]
-    return any(ngrams.count(triple)>=4 for triple in set(ngrams))
+    triples=Counter(tuple(terms[i:i+3]) for i in range(max(0,len(terms)-2)))
+    return any(n>=4 for n in triples.values())
+
+
+def quality_flags(words, language, window_seconds):
+    """Conservative ASR review hints. NEVER approve cuts from these scores."""
+    if not words:
+        return ["ASR_EMPTY"]
+    flags=[]
+    if repeated_phrases(words):
+        flags.append("POSSIBLE_ASR_REPETITION")
+    probabilities=[w.get("probability") for w in words
+                   if w.get("probability") is not None]
+    if len(probabilities)>=3 and sum(p<0.35 for p in probabilities)*2>=len(probabilities):
+        flags.append("ASR_LOW_WORD_CONFIDENCE")
+    if window_seconds>=12 and len(words)<3:
+        flags.append("ASR_SPARSE_SPEECH_REVIEW")
+    if not isinstance(language,str) or language.lower() in ("", "unknown", "und"):
+        flags.append("ASR_LANGUAGE_UNDETERMINED")
+    return flags
+
+
+def source_fingerprint(path):
+    """Detect source replacement/edit during multi-window recovery, without hashing video."""
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("Original media disappeared or became linked during ASR")
+    st=path.stat()
+    if st.st_size<=0:
+        raise ValueError("Original media became empty during ASR")
+    return (st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns)
 
 
 def execute(request,source_map,transcribe,*,ffmpeg="ffmpeg",ffprobe="ffprobe",
@@ -122,33 +153,52 @@ def execute(request,source_map,transcribe,*,ffmpeg="ffmpeg",ffprobe="ffprobe",
     """Inject transcribe/probe/extract in tests. No Premiere access, no cut plan."""
     resolved=validate(request,source_map)
     # Full preflight before first decoder/transcriber call.
+    fingerprints={}
     for code,path,expected,_ in resolved:
+        before=source_fingerprint(path)
         measured=probe_fn(path,ffprobe)
         if not number(measured) or abs(measured-expected)>1.25:
             raise ValueError("Original source changed since ASR diagnostic: "+code)
+        if source_fingerprint(path)!=before:
+            raise ValueError("Original source changed during ASR preflight: "+code)
+        fingerprints[code]=before
     result={"schema":SCHEMA_OUT,"safeToModifyPremiereTimeline":False,
             "automaticCuttingAllowed":False,"sourceDiagnosticSHA256":request.get("sourceDiagnosticSHA256"),
             "rescans":[],"blocked":request.get("blocked",[])}
     with tempfile.TemporaryDirectory(prefix="aive_r206_",dir=tempdir) as directory:
         folder=Path(directory)
         for code,path,duration,windows in resolved:
+            if source_fingerprint(path)!=fingerprints[code]:
+                raise ValueError("Original source changed before ASR extraction: "+code)
             src_stat=path.stat()
             source_result={"sourceCode":code,"sizeBytes":src_stat.st_size,
                            "mtimeNs":src_stat.st_mtime_ns,"windows":[]}
             for idx,(start,end,ids) in enumerate(windows):
+                if source_fingerprint(path)!=fingerprints[code]:
+                    raise ValueError("Original source changed before ASR window: "+code)
                 wav=folder/(code+"_"+str(idx)+".wav")
                 extract_fn(path,start,end,wav,ffmpeg)
                 if not wav.is_file() or wav.stat().st_size<4:
                     raise ValueError("Decoder did not create an audio window")
                 t=transcribe(wav)
+                if source_fingerprint(path)!=fingerprints[code]:
+                    raise ValueError("Original source changed during ASR window: "+code)
                 if not isinstance(t,dict) or not isinstance(t.get("words"),list):
                     raise ValueError("Invalid ASR candidate response")
+                if len(t["words"])>2000:
+                    raise ValueError("Too many ASR words for one window")
                 words=[]
+                previous_start=-1.
                 for word in t["words"]:
+                    if not isinstance(word,dict):
+                        raise ValueError("Invalid ASR word object")
                     a,b=word.get("start"),word.get("end")
                     if not number(a) or not number(b) or a<0 or b<a or b>end-start+.35:
                         raise ValueError("ASR word timing outside requested audio")
-                    if not isinstance(word.get("text"),str):
+                    if a<previous_start-0.005:
+                        raise ValueError("ASR word timestamps out of order")
+                    previous_start=a
+                    if not isinstance(word.get("text"),str) or not word["text"].strip():
                         raise ValueError("ASR word text invalid")
                     probability=word.get("probability")
                     if probability is not None and (not number(probability) or not 0<=probability<=1):
@@ -157,9 +207,7 @@ def execute(request,source_map,transcribe,*,ffmpeg="ffmpeg",ffprobe="ffprobe",
                                   "endSeconds":round(start+b,3),
                                   "text":word["text"],
                                   "probability":probability})
-                flags=[]
-                if not words:flags.append("ASR_EMPTY")
-                elif repeated_phrases(words):flags.append("POSSIBLE_ASR_REPETITION")
+                flags=quality_flags(words,t.get("language"),end-start)
                 source_result["windows"].append({
                     "startSeconds":start,"endSeconds":end,"cutIds":ids,
                     "status":"REVIEW_REQUIRED","qualityFlags":flags,
