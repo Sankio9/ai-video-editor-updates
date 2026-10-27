@@ -55,4 +55,8 @@ jobs:
             echo "Release already exists: $TAG" >&2
             exit 1
           fi
+          if [ "$VERSION" = "1.9.12" ]; then
+            gh release create "$TAG" dist/AIVE_UPDATE.zip --title "AI Video Editor $TAG — TC optional (candidate)" --notes "Versiune de test R1.9.12: suport IN/OUT lipsă, bazată pe R1.9.11. Nu se instalează automat peste alte versiuni." --prerelease
+          else
           gh release create "$TAG" dist/AIVE_UPDATE.zip --title "AI Video Editor $TAG" --notes "Actualizare verificată cu SHA-256. Se instalează din panoul Premiere după închiderea aplicației." --latest
+          fi
