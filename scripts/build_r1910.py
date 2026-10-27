@@ -53,12 +53,12 @@ def build():
     needle=" function say(m,s){var node=E(m.key+'R193Status');if(node)node.textContent=s;"
     js=replace_one(js,needle,RENDER+" function say(m,s){var node=E(m.key+'R193Status');if(node)renderMediaStatus(node,String(s));")
     needle=".r192-launch{font-weight:bold;padding:13px 10px}'"
-    js=replace_one(js,needle,".r192-launch{font-weight:bold;padding:13px 10px}"+CSS.replace('\\n',' ')+"'")
+    js=replace_one(js,needle,".r192-launch{font-weight:bold;padding:13px 10px}"+CSS.replace('\n',' ')+"'")
     payload=js.encode('utf8')
     if hashlib.sha256(payload).hexdigest()!=AFTER:raise ValueError('New UI hash mismatch')
     manifest={'format':1,'version':'1.9.10','files':[{'path':PATH,'before_sha256':BEFORE,'sha256':AFTER}]}
     with zipfile.ZipFile(OUT,'w',compression=zipfile.ZIP_DEFLATED) as z:
-        z.writestr('manifest.json',json.dumps(manifest,indent=2)+'\\n')
+        z.writestr('manifest.json',json.dumps(manifest,indent=2)+'\n')
         z.writestr('payload/'+PATH,payload)
     print('R1.9.10 ready:',OUT.stat().st_size,'bytes')
 if __name__=='__main__':build()
