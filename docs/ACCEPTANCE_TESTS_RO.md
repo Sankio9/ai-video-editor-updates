@@ -64,3 +64,12 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [ ] **ÎNCĂ NECONFIRMAT:** comparație readback **conținutul fiecărui MOGRT/parametrii Bold** cu DOCX original; snapshot non-distructiv pe alte piste, V5 ocupată, cancel și rollback; accentuare semantică editorial optimă. READBACK PASS de cantitate nu dovedește aceste proprietăți.
 - [ ] **UX bug confirmat vizual:** în modul Independent, încă apar controale și ajutor legacy R1.7 (ex. «Verifică rezultatul», «Generează planul R17 și apasă Verifică.»). Cerință patch: ascunde numai blocurile legacy în modul Independent și restaurează-le identic în modul «Pe montajul existent»; nu schimba executoarele MOGRT.
 - **Status actual 04:** inserare și număr LIVE PASS 8/8; aspect LIVE PASS parțial; suita P0 completă încă deschisă.
+
+
+## R2.0.5 Beta / CI (2026-10-27)
+- [x] **GitHub Beta v2.0.5 publicată** fără a afecta canalul Stable; 2-file delta (`cep/r20_panel.js`, `tools/r204_carton_layout.py`), upgrade strict din R2.0.4.
+- [x] **GitHub Actions CI PASS**, run `40553121226`: v2.0.4 exact ZIP SHA-256, testele semantic (6, incl. 200 intrări sintetice), mock UI 02/03/04, 18 mock ExtendScript, guard, două fișiere + `before_sha256` și control release Stable.
+- [x] **CI branch regresii PASS**, ultimele runuri `40553391478` și `40553403216`. Eșecul precedent al testului branch era legat de `HEAD^` indisponibil în checkout shallow; a fost reparat, ulterior PASS.
+- [ ] **LIVE Premiere R2.0.5 nevalidat**: restaurare controale legacy la comutare, readback al noilor evidențieri, text 8/8 și V5 ocupată, rollback real.
+- [ ] **01 montaj nu e P0 PASS**: 9 accept, 8 review, 2 NO_MATCH în ultimul diagnostic R1.9.13; ASR 9974 defect. Modul 05 HOLD.
+- **IMPORTANT**: Nu marca release Stable din acest CI; R1.9.13 continuă ca ultimul Stable confirmat.
