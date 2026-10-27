@@ -48,3 +48,11 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [ ] **LIVE updater:** upgrade R2.0.3 → R2.0.4 prin Beta, manifest 2 fișiere, SHA-256, backup automat, rollback restaurând byte-exact cele două rădăcini CEP/fișierele anterioare; ZIP manual interzis. Stable nu devine R2.0.4.
 - [x] **RELEASE Beta publicat**: v2.0.4, prerelease, SHA-256 arhivă `dc5fe714758ec388a18ac317b113452a33a6a65e5ae1101b7cda6c792308be9f`, 8219 octeți. **Nu este LIVE PASS**.
 - [x] **LOCAL/CI:** teste sintetice layout, regresie NameTag și mock ExtendScript raportate PASS în procesul de construire; aceste rezultate nu validează ochiul editorial ori renderele Premiere.
+
+
+### Evidență Premiere LIVE — captura 2026-10-27 16:18:53 (confirmare PARȚIALĂ)
+- [x] **PREMIERE LIVE VISUAL:** un carton independent este redat pe Program Monitor cu 2 rânduri, diacritice RO și accente Orange/Bold efective. Exemplu vizibil: `UNII ELEVI ÎNVAȚĂ ÎN SISTEM / DUAL: ȘI LA ȘCOALĂ, ȘI LA MUNCĂ`.
+- [x] **PREMIERE LIVE VISUAL:** pe pista V5 se văd opt segmente grafice în ordinea scenariului; pe V3 și V4 sunt alte clipuri, fără montaj aparent pe V1/A1. Numărul e estimat vizual; **nu reprezintă readback automatat**.
+- [ ] **NECONFIRMAT:** readback numeric 8/8 MOGRT și proprietăți precise `Bold Words` / text / durate; comparația 8/8 cu DOCX, toate cele 4 rânduri, păstrarea exactă a V1/A1/V3/V4 înainte/după, V5 ocupată, anulare și rollback.
+- [ ] **EDITORIAL REVIEW:** highlightul din exemplar prinde `ELEVI ÎNVAȚĂ` și `ȘCOALĂ`, dar nu prioritizează conceptul esențial `SISTEM DUAL`. Este un defect de **selectare semantică**, nu o dovadă de eroare de inserare MOGRT.
+- **Stare 04:** `LIVE VISUAL PARTIAL PASS`; NU marca P0 complet și NU promova Beta la Stable.
