@@ -1,0 +1,32 @@
+name: R2.0.6 Selective ASR Rescan Planning (read-only)
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r206/**'
+      - '.github/workflows/r206-selective-asr.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python syntax and private-data-free 15 regression tests
+        run: |
+          python -m py_compile experimental/r20/r206/tools/r206_selective_asr.py
+          python -m unittest discover -s experimental/r20/r206/tests -p 'test_r206_selective_asr.py' -v
+      - name: Keep module 01 untouched and stable config frozen
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          x=json.loads(pathlib.Path('release/next.json').read_text('utf8'))
+          assert x['version']=='1.9.13'
+          assert pathlib.Path('experimental/r20/r206/tools/r206_selective_asr.py').is_file()
+          print('PASS: independent audit only — no montage, CUDA, ASR or Premiere writes')
+          PY
