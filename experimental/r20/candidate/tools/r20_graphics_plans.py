@@ -57,12 +57,34 @@ def _editorial_markers(docx:Path):
     for index, paragraph in enumerate(Document(docx).paragraphs):
         for line in paragraph.text.splitlines():
             line=line.strip()
-            if re.match(r'^(?:SINCRON|AMB)\b\s*[:–—-]',line,re.I):
-                markers.append((index,'editorial',None))
+            heading=re.match(r'^(SINCRON|AMB)\b\s*[:–—-]',line,re.I)
+            if heading:
+                markers.append((index,'ambience' if heading.group(1).upper()=='AMB' else 'editorial',None))
             elif re.fullmatch(r'\d{4}',line):
                 markers.append((index,'source',line))
     return markers
 
+
+def _skip_identity_reason(seg, markers):
+    """Editorially safe: an explicit AMB source is NOT a speaker NameTag.
+
+    Do not silently treat unnamed SINCRON as ambience. Unnamed interview
+    remains REVIEW with an explicit user decision. Check source-code agreement
+    for both named and anonymous segments.
+    """
+    start=int(seg['paragraph_start'])
+    relevant=[m for m in markers if m[0]<=start]
+    last_heading=next((m for m in reversed(relevant) if m[1] in ('ambience','editorial')),None)
+    last_source=next((m for m in reversed(relevant) if m[1]=='source'),None)
+    code=seg.get('source_code')
+    if last_source and code and last_source[2]!=code:
+        raise ValueError('NameTag REVIEW: cod sursă DOCX %s ≠ %s la CUT-%02d' %
+                         (last_source[2],code,seg['ordinal']))
+    if (last_heading and last_heading[1]=='ambience' and
+            last_source and last_source[0]>=last_heading[0] and
+            (not code or last_source[2]==code)):
+        return ('SKIP_AMBIENCE','AMB editorial fără identificare NameTag; nu este burtieră')
+    return ('REVIEW_MISSING_IDENTITY','SINCRON/identificare fără nume și funcție verificabile')
 
 def _name_blocks(segments,markers):
     """Yield (segment, card, block number) for consecutive editorial blocks.
@@ -133,9 +155,11 @@ def build(docx:Path, module:str, separator:float=SEPARATOR):
         recorded=set()
         for seg,name,block in _name_blocks(segments,markers):
             if name is None:
+                kind,reason=_skip_identity_reason(seg,markers)
                 skipped.append({'paragraph':seg['paragraph_start'],
                                 'cutId':'CUT-%02d'%seg['ordinal'],
-                                'reason':'Lipsesc nume/funcție din DOCX'})
+                                'sourceCode':seg.get('source_code'),
+                                'kind':kind,'reason':reason})
                 continue
             if block in recorded:continue
             recorded.add(block)
@@ -165,13 +189,15 @@ def build(docx:Path, module:str, separator:float=SEPARATOR):
                 raise ValueError('Identificare invalidă în lista REVIEW.')
             if not isinstance(entry.get('paragraph'),int) or entry['paragraph']<0:
                 raise ValueError('Paragraf invalid în lista REVIEW.')
+    review_required=any(entry.get('kind')=='REVIEW_MISSING_IDENTITY' for entry in skipped)
     return {'schema':SCHEMA,'module':module,'mode':'independent',
             'timing':'SCRIPT_PREVIEW' if module=='02' else 'EDITORIAL_PREVIEW',
             'docx_sha256':hashlib.sha256(docx.read_bytes()).hexdigest(),
             'sourceDocx':docx.name,'separatorSeconds':separator,'items':items,
             'totalItems':len(items),'groups':len({a['groupId'] for a in items}),
-            'skipped':skipped,'reviewRequired':bool(skipped),
-            'reviewPolicy':'EXPLICIT_SKIP_APPROVAL' if skipped else 'NONE',
+            'skipped':skipped,'reviewRequired':review_required,
+            'reviewPolicy':('EXPLICIT_SKIP_APPROVAL' if review_required else
+                            'AUTO_AMBIENCE_SKIP' if skipped else 'NONE'),
             'containsAudioSync':False,'generatorVersion':'R2.0.3-review-gate'}
 
 def main():
