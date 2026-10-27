@@ -1,0 +1,53 @@
+name: AI Video Editor R2.0 candidate unattended regression
+on:
+  schedule:
+    - cron: '15 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: aive-r20-nightly-tests
+  cancel-in-progress: false
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/r20-independent-graphics-gate
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install synthetic-test dependency only
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Test candidate semantics and independent CEP visibility
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r205/candidate/tools/r204_carton_layout.py
+          python -m unittest discover -s experimental/r20/r205/tests -p test_r205_semantics.py -v
+          node --check experimental/r20/r205/candidate/cep/r20_panel.js
+          node experimental/r20/r205/tests/test_r205_ui.js
+      - name: Re-test R2.0 independent MOGRT mock and rollback gates
+        run: |
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+      - name: NameTag R2.0.3 regression remains protected
+        run: |
+          set -eu
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p 'test_r201_nametag.py' -v
+          python -m unittest discover -s tests_r20 -p 'test_r203_review.py' -v
+      - name: Require published Stable to stay v1.9.13 pending LIVE certification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          CURRENT="$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)"
+          test "$CURRENT" = 'v1.9.13' || { echo 'Stable changed: manual review required'; exit 1; }
+          echo 'SAFE: Stable v1.9.13, no writes to user machine or repository'
