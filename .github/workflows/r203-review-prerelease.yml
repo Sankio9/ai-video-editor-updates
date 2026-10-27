@@ -24,7 +24,7 @@ jobs:
           data=json.load(open('release/r203-review-request.json'))
           assert data == {
             'version':'2.0.3',
-            'head_sha':'e50bc9e9cd343604065ba08fefc2f8ebc35d12c5',
+            'head_sha':'6a4be13ea04efcb6fb7fd09286fbdb658df6661a',
             'requires_installed':'2.0.2',
             'purpose':'NameTag skip REVIEW explicit user confirmation; 2-file beta patch'
           }
@@ -33,7 +33,7 @@ jobs:
           ! gh release view v2.0.3 >/dev/null 2>&1
       - uses: actions/checkout@v4
         with:
-          ref: e50bc9e9cd343604065ba08fefc2f8ebc35d12c5
+          ref: 6a4be13ea04efcb6fb7fd09286fbdb658df6661a
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
@@ -74,7 +74,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release create v2.0.3 dist/AIVE_UPDATE.zip \
-            --target e50bc9e9cd343604065ba08fefc2f8ebc35d12c5 \
+            --target 6a4be13ea04efcb6fb7fd09286fbdb658df6661a \
             --title 'AI Video Editor R2.0.3 — NameTag Review Gate (Beta)' \
             --notes 'Experimental only. Update from v2.0.2 through the in-Premiere Beta updater. NameTag with missing editorial identity is explicitly reported by CUT and requires user approval for skipping before V4 insertion. No fabricated names. Montage, subtitles, cartoons and VO modules unchanged. Premiere LIVE pending.' \
             --prerelease --latest=false
