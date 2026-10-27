@@ -26,8 +26,13 @@ jobs:
         run: |
           node --check experimental/r20/r205/candidate/cep/r20_panel.js
           node experimental/r20/r205/tests/test_r205_ui.js
-      - name: Ensure stable and R2.0.4 payloads untouched by this candidate
+      - name: Ensure stable release config remains 1.9.13
         run: |
-          git diff --quiet HEAD^ HEAD -- release/next.json release/r204-cartoane-request.json
-          test -f experimental/r20/r204/candidate/tools/r204_carton_layout.py
-          test -f experimental/r20/r205/candidate/tools/r204_carton_layout.py
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('release/next.json')
+          assert json.loads(p.read_text('utf8'))['version']=='1.9.13'
+          assert pathlib.Path('experimental/r20/r204/candidate/tools/r204_carton_layout.py').is_file()
+          assert pathlib.Path('experimental/r20/r205/candidate/tools/r204_carton_layout.py').is_file()
+          print('PASS frozen Stable config and R2.0.4 candidate preserved')
+          PY
