@@ -1,17 +1,12 @@
 {
-  "version": "1.9.9",
-  "builder": "scripts/build_r199.py",
-  "requires": "1.9.8",
+  "version": "1.9.10",
+  "builder": "scripts/build_r1910.py",
+  "requires": "1.9.9",
   "files": [
     {
-      "path": "cep/jsx/r193_media_probe.jsx",
-      "sha256": "84a6eac1d34cd3ca0ee9784df0d9c024e77a8d8aeb18b714f16bbb0afe195b73",
-      "before_sha256": "0398cd90cf328d1182fa08f6b4944e799fea829a4b299c217afe396b5ca91e4d"
-    },
-    {
-      "path": "tools/r193_pipeline.py",
-      "sha256": "f710ce32094d858bbb0137b1790625733a2c1e2b215c438179d3e9f3e68ff029",
-      "before_sha256": "b888441cf6d58397f0387a65e1fe44503ca1c197061ef41152d70b79a830b791"
+      "path": "cep/r193_workflow.js",
+      "before_sha256": "b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222",
+      "sha256": "fcafbea9854bc7176b68342473d9b27f362a8cfc6e3334063532c1b16df81dd9"
     }
   ]
 }
