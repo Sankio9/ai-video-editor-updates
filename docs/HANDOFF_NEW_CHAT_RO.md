@@ -41,3 +41,11 @@ Pe «Bubuieci», R1.9.13 a refuzat montajul pentru 10/19 sincronuri (9 accept, 8
 - Lansatorul de test one-click a fost creat ca `AIVE_R20_Test_GitHub.cmd` în chatul curent. El NU este arhiva update de instalat manual: verifică release-ul prerelease/pinned digest, folosește `updater/runner.py` existent (hash controlat), `prepare()` cu staging + verificare de hash și instalare doar după închiderea Premiere. La relansare după instalare oferă rollback `2.0.0 -> 1.9.13`, Premiere închis.
 - Intervenția utilizatorului: descărcarea lansatorului, dublu-click, acceptarea testului și închiderea Premiere, apoi redeschiderea pe secvența de probă. Testul inițial: secțiunea 00 selectează DOCX, 02 selectează Independent din scenariu, V3 goală, generează. Fotografia/mesajele de status stabilesc următoarea corecție.
 - **Status**: încă [PREMIERE LIVE NOT TESTED]. Este interzisă promovarea ca stable, fuziunea PR #1 sau testele pe producție până la testele P0 LIVE. 05 VO rămâne HOLD. V5 overwrite destructiv este dezactivat preventiv în modul independent.
+
+## 2026-10-27 — Hotfix pentru lansatorul beta R2.0
+- Primul test de lansare pe Windows s-a oprit corect **înainte de instalare**. Mesaj: `Versiune locală neașteptată: v1.9.13. Este permis doar upgrade direct din R1.9.13.`
+- Cauză: comparare literală greșită între `v1.9.13` (updater/state.json local) și `1.9.13` (lansatorul beta), deși `updater/runner.py` acceptă ambele formate.
+- Lansator corectat: `AIVE_R20_Test_GitHub_FIX_v1_1.cmd`, livrat în conversație; SHA-256 `46c8ee8ed5ba39b0c8733d18646f35c4036bdaa3b8bc629e138defd5bb6e03ff`.
+- Fix: compară numeric `runner.ver(current) == (1,9,13)` și la rollback `runner.ver(restored_version) == (1,9,13)`; acceptă formele cu și fără `v` pentru R1.9.13/R2.0.0. Alte versiuni rămân blocate.
+- Teste locale PASS: sintaxă Python, variante `v1.9.13`/`1.9.13`, rollback pentru `v2.0.0`/`2.0.0`, refuz altor versiuni, pin SHA updater și release neschimbate.
+- **Nu este test LIVE Premiere**; instalarea completă încă necesită confirmarea utilizatorului și verificările de preflight de hash pe ambele rădăcini CEP. Nu rula vechiul lansator.
