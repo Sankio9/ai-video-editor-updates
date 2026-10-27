@@ -28,3 +28,12 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - DOCX cu 8 antete de identificare și 2 CUT-uri din bloc AMB: 8 MOGRT V4, două intrări `SKIP_AMBIENCE` vizibile; fără dialog inutil de aprobare, fără identitate inventată.
 - DOCX cu SINCRON fără nume/funcție: `REVIEW_MISSING_IDENTITY` și dialog explicit ÎNAINTE de inserare; la Cancel zero scrieri. Cod sursă contradictoriu => STOP.
 - Verifică readback NameTag, unicitate pe bloc, păstrarea V3 (43 segmente), Unicode și caz de revenire a aceluiași speaker. Niciun rezultat mock/CI nu echivalează cu LIVE PASS în Premiere.
+
+
+## R2.0.3 — rezultat LIVE pentru NameTag independent (27 octombrie 2026)
+- [x] Premiere: `READBACK PASS: 8 MOGRT pe V4 — EDITORIAL_PREVIEW` (screenshot utilizator).
+- [x] Identificări fără NameTag: `SKIP_AMBIENCE` doar CUT-18/CUT-19 sursa 9974 (screenshot utilizator).
+- [x] Program Monitor: `MĂDĂLINA CRIULEAN` / `ELEVĂ`, caractere românești afișate (screenshot utilizator).
+- [x] V3 păstrată vizual, V1/A1 fără montaj, inserare independentă V4.
+- [ ] Audio sync, V3/V4 aliniate pe montaj existent și regresii pe alte DOCX — NU încă validate.
+- [ ] 04 Cartoane V5 LIVE — următorul test.
