@@ -30,4 +30,4 @@ assert.strictEqual(occupied.reason,'V5_OCCUPIED');
 assert.deepStrictEqual(occupied.choices,['Suprascrie materialele de pe V5','Oprește, eliberez V5']);
 rejects(()=>G.checkPlan(plan('04',[item('x','g',0,1,'a'.repeat(34))],'EDITORIAL_PREVIEW')),/33/);
 rejects(()=>G.checkPlan(plan('04',[item('x','g',0,1,'1\n2\n3\n4\n5')],'EDITORIAL_PREVIEW')),/4 lines/);
-console.log('LOCAL PASS: 19 R2.0 guard assertions (not Premiere LIVE validation)');
+console.log('LOCAL PASS: R2.0 guard mock assertions (not Premiere LIVE validation)');
