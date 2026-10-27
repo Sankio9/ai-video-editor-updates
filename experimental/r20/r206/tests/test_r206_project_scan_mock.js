@@ -24,7 +24,7 @@ let result=scan();
 assert.equal(result.ok,true,JSON.stringify(result));
 assert.equal(result.nodeCount,7);
 assert.equal(result.inventory.schema,'aive-r206-project-panel-v1');
-assert.equal(result.inventory.items[0].children[0].children[0].children[0].mediaPath,
+assert.equal(result.inventory.items[0].children[0].children[0].mediaPath,
              'D:\\PRIVATE\\CAM_9981_interview.mov');
 assert.equal(result.inventory.items[1].type,'sequence');
 assert.equal(result.inventory.items[0].children[1].children[0].offline,false);
