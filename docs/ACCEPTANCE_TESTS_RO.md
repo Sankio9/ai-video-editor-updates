@@ -22,3 +22,9 @@
 
 ## Condiție publicare
 Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sau [NOT TESTED]. Release «stable/final» doar dacă toate P0 au LIVE PASS; altfel «candidate/experimental» și update-ul stabil rămâne neschimbat.
+
+
+## R2.0.3 — test adăugat pentru AMB fără NameTag
+- DOCX cu 8 antete de identificare și 2 CUT-uri din bloc AMB: 8 MOGRT V4, două intrări `SKIP_AMBIENCE` vizibile; fără dialog inutil de aprobare, fără identitate inventată.
+- DOCX cu SINCRON fără nume/funcție: `REVIEW_MISSING_IDENTITY` și dialog explicit ÎNAINTE de inserare; la Cancel zero scrieri. Cod sursă contradictoriu => STOP.
+- Verifică readback NameTag, unicitate pe bloc, păstrarea V3 (43 segmente), Unicode și caz de revenire a aceluiași speaker. Niciun rezultat mock/CI nu echivalează cu LIVE PASS în Premiere.
