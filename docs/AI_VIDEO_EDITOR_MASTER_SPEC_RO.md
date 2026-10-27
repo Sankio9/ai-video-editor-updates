@@ -89,3 +89,10 @@ Categoriile trebuie să aibă selector de mod inteligibil; **nu se schimbă auto
 5. **Siguranță V5 neschimbată**: inventar complet (orice media/MOGRT, oriunde pe pistă), exact cele două alegeri deja aprobate pentru pista ocupată, acceptare expresă pentru distrugere, fără ștergere implicită, fără QE addTracks. O implementare care nu poate garanta overwrite+rollback se oprește conservator, nu șterge.
 6. **Regresie interzisă:** nu modifica 01 Montaj, 02 Subtitrări, 03 NameTag sau 05 Voice-over într-un patch de aspect 04. În particular, păstrează corecția 03/R2.0.3 `SKIP_AMBIENCE` vs `REVIEW_MISSING_IDENTITY`.
 7. **Distribuție**: R2.0.4 este prerelease **Beta**, delta SHA-256 cu exact 2 fișiere, instalabilă numai peste versiunea compatibilă R2.0.3 prin updaterul în Premiere; stable rămâne R1.9.13 până la validări LIVE. Fără instalare ZIP manuală. Nici CI/mock, nici readback din teste simulate nu sunt certificare LIVE.
+
+
+## REGULĂ DE CALITATE — selecție semantică în Cartoane 04 (observație LIVE 2026-10-27)
+- Preferă evidențierea **ideii principale/expresiei-cheie compuse** din propoziție față de accentuarea unor termeni generici izolați. Exemplu de regresie editorială: în cartonul `UNII ELEVI ÎNVAȚĂ ÎN SISTEM DUAL: ȘI LA ȘCOALĂ, ȘI LA MUNCĂ`, `SISTEM DUAL` are prioritate conceptuală față de `ELEVI ÎNVAȚĂ`.
+- Folosește exclusiv secvențe **literale**, contigue din DOCX; nicio reformulare, nicio invenție. Subtilitatea semantică este evaluată distinct de succesul tehnic Orange/Bold; preferă puține accente precise.
+- Nu sacrifica compactarea în două rânduri doar ca să păstrezi un concept pe un singur rând; fiecare token evidențiat trebuie asociat corect poziției lui MOGRT chiar dacă expresia traversează o delimitare vizuală.
+- Următoarele optimizări sunt în stadiu **cerință / candidat**, nu deja instalate în R2.0.4.
