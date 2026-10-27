@@ -22,6 +22,8 @@ jobs:
           VERSION=$(python3 -c 'import json;print(json.load(open("release/next.json"))["version"])')
           if [ "$VERSION" = "1.9.1" ]; then
             python3 scripts/build_r1911.py
+          elif [ "$VERSION" = "1.9.8" ]; then
+            python3 scripts/build_r198.py
           else
             python3 scripts/publish_encoded.py --output dist/AIVE_UPDATE.zip
           fi
