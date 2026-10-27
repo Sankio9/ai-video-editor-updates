@@ -24,7 +24,7 @@ jobs:
           data=json.load(open('release/r201-test-request.json'))
           assert data == {
             "version":"2.0.1",
-            "head_sha":"e6b2167d9ea4706ad993cdb5442d601c385107eb",
+            "head_sha":"7a907fdccc61381cd332db732e2c58b5c43fdeef",
             "base":"2.0.0",
             "purpose":"NameTag parser hotfix only; prerelease test"
           }
@@ -33,7 +33,7 @@ jobs:
           ! gh release view v2.0.1 >/dev/null 2>&1
       - uses: actions/checkout@v4
         with:
-          ref: e6b2167d9ea4706ad993cdb5442d601c385107eb
+          ref: 7a907fdccc61381cd332db732e2c58b5c43fdeef
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
@@ -65,7 +65,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release create v2.0.1 dist/AIVE_UPDATE.zip \
-            --target e6b2167d9ea4706ad993cdb5442d601c385107eb \
+            --target 7a907fdccc61381cd332db732e2c58b5c43fdeef \
             --title "AI Video Editor R2.0.1 — NameTag parser HOTFIX (test)" \
             --notes "Experimental prerelease ONLY over local v2.0.0. One-file SHA-gated NameTag planner hotfix for same-paragraph SINCRON/AMB and missing separate source headers. V1/V3/V5 and other modules unchanged. Live Premiere validation required." \
             --prerelease --latest=false
