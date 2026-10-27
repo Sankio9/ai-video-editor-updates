@@ -1,0 +1,76 @@
+name: Publish isolated R2.0 test prerelease
+on:
+  push:
+    branches: [main]
+    paths: ['release/r20-test-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r20-prerelease
+  cancel-in-progress: false
+jobs:
+  experimental:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read test gate and freeze reviewed branch revision
+        uses: actions/checkout@v4
+      - name: Validate exact approval and stable release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json
+          g=json.load(open('release/r20-test-request.json'))
+          assert g == {
+            "version":"2.0.0",
+            "head_sha":"7f35a35058bb97f7925ba35e88a05ae9f39ed4ae",
+            "purpose":"Premiere test only; DO NOT promote latest or merge"
+          }, "Explicitly-reviewed R2.0 test gate mismatch"
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          if gh release view v2.0.0 >/dev/null 2>&1; then
+            echo 'Refusing to replace existing release'; exit 1
+          fi
+      - name: Checkout pinned candidate revision
+        uses: actions/checkout@v4
+        with:
+          ref: 7f35a35058bb97f7925ba35e88a05ae9f39ed4ae
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run mocked Adobe safety tests
+        run: |
+          node experimental/r20/tests/guard.test.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node --check experimental/r20/candidate/cep/r20_panel.js
+          cp experimental/r20/candidate/cep/jsx/r20_graphics.jsx /tmp/aive-r20-graphics.js
+          node --check /tmp/aive-r20-graphics.js
+      - name: Build hash-pinned independent-graphics test payload
+        run: |
+          python3 experimental/r20/candidate/build_release_candidate.py --output dist/AIVE_UPDATE.zip
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            j=json.loads(z.read('manifest.json'))
+            assert j['version']=='2.0.0' and len(j['files'])==4
+            for x in j['files']:
+              assert hashlib.sha256(z.read('payload/'+x['path'])).hexdigest()==x['sha256']
+            assert all('before_sha256' in e for e in j['files'])
+          print('Four-file beta payload verified')
+          PY
+      - name: Publish as prerelease, never change latest stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create v2.0.0 dist/AIVE_UPDATE.zip \
+            --target 7f35a35058bb97f7925ba35e88a05ae9f39ed4ae \
+            --title "AI Video Editor R2.0 — TEST ONLY (Premiere validation)" \
+            --notes "EXPERIMENTAL PRE-RELEASE. Test ONLY with backup and empty sequence. Local mock tests passed; Premiere live tests pending. Do not use real projects. Stable remains v1.9.13. No automatic updater offer." \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
