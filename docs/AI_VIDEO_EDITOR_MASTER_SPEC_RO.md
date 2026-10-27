@@ -1,0 +1,77 @@
+# AI VIDEO EDITOR — MASTER SPEC & DECISIONS (RO)
+**Revizie:** 2026-10-27 · **Statut:** normativ pentru continuarea proiectului · **Repo distribuție:** `Sankio9/ai-video-editor-updates`
+
+> Acest fișier este sursa de adevăr pentru cerințele utilizatorului și evoluția aprobată. Nu echivalează cu certificarea funcțională a vreunei versiuni. La fiecare sesiune nouă, citiți împreună `docs/ACCEPTANCE_TESTS_RO.md` și `docs/HANDOFF_NEW_CHAT_RO.md`. Nu publicați cod sursă editorial privat, DOCX-uri, audio/video, transcrieri sau date din proiecte în repository-ul PUBLIC.
+
+## 1. Obiectiv permanent
+Extensie AI Video Editor — Reportaj pentru **Adobe Premiere Pro 2025 25.6.4/Windows**, instalare locală `D:\AI-Video-Editor`. Un **singur DOCX** ales în modulul **00**, surse video/audio importate oriunde în **Project Panel**, categorii cu **câte UN singur buton** fiecare: **01 Montaj**, **02 Subtitrări MOGRT**, **03 NameTag**, **04 Cartoane**, **05 VO (HOLD)**. Fără lansări CMD, fără pregătirea manuală a fișierelor JSON, fără dialoguri inutile și fără transfer între alte programe. Schimbarea DOCX-ului trebuie să invalideze orice rezultat incompatibil; fiecare proiect/reportaj are namespace propriu.
+
+**REGULĂ NOUĂ EXPLICITĂ:** 02, 03, 04 trebuie să poată fi folosite **independent de 01**. Utilizatorul poate alege DOAR Cartoane, DOAR NameTag sau DOAR Subtitrări și să creeze elementele direct pe timeline, chiar dacă V1/A1 nu are montaj. Nu este admis să ruleze/cerem planul complet R143 drept condiție obligatorie a acestor moduri. Trebuie menținut și modul pe montaj existent cu sincronizare exactă.
+
+## 2. Două moduri de poziționare, fără confuzie
+**A. SINCRONIZAT CU MONTAJUL:** când V1/A1 deja corespunde montajului validat, 02/03/04 ancorează grafica în tăieturile reale, după verificarea planului și secvenței; NU o deplasează arbitrar. Păstrează comportamentul modulelor stabile.
+
+**B. INDEPENDENT DIN SCENARIU:** când nu există montaj R143 / nu se dorește acesta, modulul solicitat creează **o bandă de prezentare grafică** în ordinea editorială din DOCX. Pentru NameTag: un MOGRT per bloc editorial de identificare (nume+funcție), nu per replică. Pentru Cartoane: numai blocurile VO/caption din Word, despărțite prin pauze scurte între blocuri/pagini, nu golurile rezervate montajului. Pentru Subtitrări: doar textul replicilor din Word în grupuri separate pe V3; **fără audio prezent în secvență, sincronismul cu vocea NU poate fi pretins** — se folosește timing de lectură marcat vizibil `SCRIPT_PREVIEW` până la ancorarea ulterioară la audio. Nicio sintetizare falsă de timecode audio. Totul se poate crea într-o secvență goală, pe pistele existente, fără a atinge V1/A1. Opțiune de separator configurabilă în secunde (propunere inițială 0.75 s, nu regulă editorială definitivă). Poziționare: la 0 sau după ultimul element de pe pista vizată, în funcție de alegerea explicită. Nu suprascrie conținut existent implicit.
+
+Categoriile trebuie să aibă selector de mod inteligibil; **nu se schimbă automat modul după ce utilizatorul a confirmat**. Rezultatul poate fi `PREVIEW TIMING` sau `SYNCED`; niciodată «sincronizat» pentru timing estimat.
+
+## 3. Reguli montaj (01), obligatorii
+1. DOCX determină *ce* trebuie găsit și ordinea editorială; **transcrierea și analiza audio determină IN/OUT real**, nu timecode-ul reporterului.
+2. Timecode-ul reporterului este orientativ și poate devia cu ±30–60 s sau mai mult. Căutare extinsă până la ±90 s; acceptarea abaterii rămâne dependentă de scoruri și dovezi, nu doar de distanță. Nu utiliza niciodată fallback automat la TC brut.
+3. Pentru **fără TC**: dacă sursa are cel mult **8 minute** se permite transcrierea/căutarea întregii surse; peste 8 min se solicită reper, nu se inventează interval.
+4. **Doar IN** / **doar OUT**: estimează durata din cantitatea de text (valoare de pornire ~2.15 cuvinte/s + marjă), extinde fereastra și găsește limitele tot din ASR. Estimarea nu devine tăietură finală.
+5. Dacă textul DOCX este parafrazat față de interviu, compară fragmente, răspunsuri și fraze complete. Dacă fraza apare în mai multe locuri, este ambiguă — nu alege orbește pe baza TC.
+6. Fiecare sincron nesigur sau absent -> raport `REVIEW`; **nu modifica timeline-ul până la preflight sigur sau până la o alegere editorială explicită**. Nu marca `OK` un montaj cu fragmente omise.
+7. Detectează ASR defect/halucinații, limbă greșită, ambianță cu vorbire slabă și transcrieri foarte rare; reanalizează selectiv, nu reduce arbitrar pragurile.
+8. Transcrie o sursă o singură dată când există cache valid; nu retranscrie la pornirea Premiere.
+
+## 4. Project Panel și DOCX
+- Scannerul parcurge **recursiv** toate `bins`; nu presupune fișiere la rădăcină.
+- Potrivește codul de 4 cifre în numele real de pe disc SAU numele din Premiere, inclusiv formatele `CAM_9981_x.mov`. Nu confunda fragmente de numere mai mari; coduri contradictorii/duplicate/offline -> STOP.
+- La surse lipsă, afișează **codurile și numele cu ROȘU**, plus lista numelor și a folderelor detectate. Nu presupune automat că greșeala este în media, poate fi în Word.
+- DOCX poate avea antet SINCRON/AMB, nume/funcție, cod, TC și text în același paragraf (line breaks). Recunoaște cartoanele all-caps. Nu cere reformatarea Word-ului; nu altera textul editorial fără aprobare.
+- UTF-8 obligatoriu pe Windows pentru diacritice românești, JSON și mesajele din proces.
+
+## 5. Subtitrări / NameTag / Cartoane
+- **02 V3**: MOGRT approved; text **exact din DOCX** (nu rescris după ASR), reporter Italic doar cu dovezi editoriale, cue timings prin spoken anchors în modul SYNCED. În modul INDEPENDENT, numai preview/timing de lectură dacă nu există audio/ancoră.
+- **03 V4**: o burtieră per bloc editorial nume/funcție; gruparea NU deduplică global același vorbitor reintrodus; fără nume/rol -> explicit SKIP/REVIEW; template `RFERL_NameTag_2LinesTitle.mogrt`.
+- **04 V5**: cartoane MOGRT `RFERL_Captions_STROKE_2_.mogrt`, text original, reguli maximum 4 rânduri x 33 caractere, accent Orange/Bold, 1..N pagini semantic separate, fără coliziuni; în INDEPENDENT nu rezervă pauze VO/montaj, doar separatoare vizuale. **La „Verifică”, scanează ORICE material pe V5**, chiar dacă este foto, video, MOGRT, alte clipuri, indiferent unde e pe pistă; raport tip+nume+interval. Oferă EXACT două alegeri când V5 este ocupată: (1) «Suprascrie materialele de pe V5» cu acceptare **explicită a riscului distructiv**; (2) «Oprește, eliberez V5». Nicio suprascriere automată. Nu crea piste prin QE API; în trecut QE a deplasat NameTag.
+- **05 VO:** HOLD explicit. Nu activa fără acord. Cerințe viitoare documentate: selectare fișier audio -> «Montează VO» pe A2, tăiere după vorbirea reală, deplasare sincronizată a blocurilor următoare, actualizare V5 fără afectarea proiectului original, rollback obligatoriu. Testul izolat de inserare A2 a reușit, sincronizarea globală NU este validată.
+
+## 6. UI și experiență
+- Toate `rows`/accordions închise implicit la deschiderea extensiei (inclusiv 00); deschiderea unuia nu trebuie să provoace deschiderea/închiderea involuntară a altuia.
+- Bară **Processing** vizibilă global în timpul operațiilor, inclusiv când modulul este pliat. Preferăm progres real surse N/M, cu stare curentă; nu prezenta procente inventate.
+- Nicio procesare automată la simpla pornire Premiere. La alegerea explicită a unui DOCX nou, pregătirea poate porni numai potrivit setării/autorizării utilizatorului și trebuie să verifice mai întâi cache.
+- Cache persistent, segregat după DOCX SHA, coduri/mărime/mtime/hash sursă, model ASR + configurare + versiune matcher, plan și secvență. Modificarea sau ștergerea transcrierii trebuie să invalideze planurile dependente.
+- Politici cache: permanent (implicit), 7/30/90 zile, ștergere imediată pe sursă/reportaj cu confirmare. Nu șterge video, audio sau modele AI. Nu reutiliza rezultatele altui reportaj sau planuri incomplete.
+- Viteză: țintă `<60 s` de la «Montează» numai pentru reportaj pre-analizat; raport separat al timpului de transcriere inițială. Optimizați CUDA RTX 3070, warm process/model, `faster-whisper batched` și VAD doar după benchmarking română (calitate + timpi), cu CPU fallback sigur. Nu pretindeți că benchmark extern = rezultat local.
+- Fără ferestre de consolă, fără editarea setărilor tehnice/paths sau pornirea altor programe.
+
+## 7. Siguranță și distribuție
+- Module existente confirmate nu trebuie destabilizate. Orice mod nou este **gated** explicit (sincronizat vs independent). Nu șterge/suprascrie materiale din timeline pe care nu le deții.
+- Import MOGRT numai pe pista stabilită: V3 subtitrări, V4 NameTag, V5 cartoane; V1/A1 sursă, A2 VO când se reia. Nu crea piste prin QE. Pistele lipsă se cer create în Premiere prin UI.
+- Verificare înainte de execuție + token revalidat la inserare + readback după fiecare MOGRT. Detectează clipe ocupate, piste blocate, duplicate, material altui proiect și schimbări între verificare și inserare.
+- Versiuni prin GitHub Releases + updater CEP, validare allowlist și SHA-256 al fișierelor, exact `before_sha256`, backup automat, rollback testat în două rădăcini CEP. Nu livra ZIP de instalat manual decât diagnostic/prototip explicit.
+- Verificarea locală/mock nu este certificare în Adobe Premiere. Primele teste reale doar pe secvență de probă și copii ale proiectelor.
+- Nu promite «final / READY» fără toate testele reale și criteriile de acceptare. Rapoarte cu `LOCAL PASS`, `LIVE PASS`, `BLOCKED` separat.
+
+## 8. Dovezi din testul reportajului 2026-10-27 (date anonimizate)
+- DOCX editorial cu **19** pasaje și **8** blocuri de cartoane; 7 coduri media.
+- R1.9.3 a montat 17 clipuri, dar **8 erau timecode-fallback** (nesigure); decizia: fără fallback automat.
+- R1.9.11 a blocat corect timeline-ul dacă 8/17 nepotrivite.
+- R1.9.13 a identificat **9 ACCEPT, 8 candidat pentru revizie, 2 NO_MATCH**. Diagnosticul și 6 transcrieri ASR au confirmat parafrazări și ASR de ambianță cu halucinații. NU păstrați transcrieri și textul real în repo-ul public.
+- Release GitHub `v1.9.13` era ultima versiune stabilă verificată la data acestei revizii; R1.9.14 este **ASR Audit Lab** (diagnostic, nu release stabil); R1.9.4–1.9.7 sunt candidați parțial separați, NU presupuneți automat instalarea lor.
+- Bug-uri remediate în release-uri ulterioare: Windows cp1252 (1.9.8), Project bins + nume sursă (1.9.9), roșu surse lipsă (1.9.10), Speech-first (1.9.11), TC opțional pregătit în 1.9.12 și integrat în 1.9.13.
+- Auditați fiecare defect/patch înainte de a afirma că o combinație de versiuni e instalată.
+
+## 9. Ce NU este încă verificat și trebuie făcut
+1. Recuperarea celor 8+2 declarații pe transcript-uri românești reale, fără auto-match fals și cu recuperare ASR selectivă pentru ambianță.
+2. Mod independent 02/03/04 **EXECUTAT ÎN PREMIERE**, fără niciun montaj pe V1, în secvență goală și pe secvență ocupată.
+3. Coexistența vizuală 02–04 și a separatoarelor scurte, verificare V5/destructive choice.
+4. Măsurători locale pe RTX 3070 și progres adevărat, cache/purge.
+5. Update multi-hop sigur din versiunea instalată cu backup și rollback.
+6. Cross-reportage DOCX swap și proiect nou; lipsă/duplicat/offline media.
+7. Export diagnostic fără date private în repository.
+
+## 10. Principiu de dezvoltare pentru orice chat nou
+**Mai întâi citește acest document, verifică release-ul REAL și sursele locale relevante, apoi modifică doar punctul necesar.** Dacă lipsesc fișiere/capabilități, declară clar, nu presupune. Nu bloca independent grafica pentru o problemă de ASR la montaj.
