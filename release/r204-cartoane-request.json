@@ -1,0 +1,6 @@
+{
+  "version": "2.0.4",
+  "source_sha": "bc2eea471a072aeffdcdb6a5636ae2e9ee2c573b",
+  "requires_installed": "2.0.3",
+  "purpose": "V5 compact semantic highlight, two-file Beta delta, stable unchanged"
+}
