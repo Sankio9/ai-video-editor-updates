@@ -1,0 +1,6 @@
+{
+  "version": "2.0.5",
+  "source_sha": "fe2d21573b47ac3b30ab3205af9a62bb87a4b006",
+  "requires_installed": "2.0.4",
+  "purpose": "Fix R2.0.4 Beta UI legacy visibility and V5 headline highlights; stable unchanged"
+}
