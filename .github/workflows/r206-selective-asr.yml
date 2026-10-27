@@ -25,6 +25,13 @@ jobs:
           python -m unittest discover -s experimental/r20/r206/tests -p 'test_r206_retranscribe.py' -v
           python -m py_compile experimental/r20/r206/tools/r206_source_inventory.py
           python -m unittest discover -s experimental/r20/r206/tests -p 'test_r206_source_inventory.py' -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check Premiere Project Panel read-only scanner
+        run: |
+          node --check experimental/r20/r206/cep/jsx/r206_project_scan.jsx
+          node experimental/r20/r206/tests/test_r206_project_scan_mock.js
       - name: Keep module 01 untouched and stable config frozen
         run: |
           python - <<'PY'
