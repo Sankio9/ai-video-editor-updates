@@ -23,3 +23,12 @@ Motorul primește numai diagnosticul local de tip `aive-match-diagnostic-v1` și
 
 ## ACCEPTARE rămasă
 Integrarea în modul 01 cu notificare de progres și cache valid, retranscriere audio reală numai pentru ferestrele selectate, comparație cu DOCX, tratarea halucinațiilor ASR pe surse ambianță, teste LIVE în Premiere, zero fallback TC, audit JSON local și rollback. Până atunci 01 rămâne fail-closed pe incertitudini.
+
+
+## Implementare ulterioară în aceeași ramură — executor ASR local, încă neintegrat în 01
+- `tools/r206_retranscribe.py` este un **executor real opt-in**, nu doar un calculator de ferestre: decupează în mod local fiecare interval prin FFmpeg într-un WAV temporar mono 16 kHz, cere durata prin ffprobe și folosește modelul CTranslate2 local preinstalat `faster_whisper.WhisperModel`. Nu descarcă automat modele și nu contactează servicii externe.
+- Decodarea cu `beam_size=5`, `temperature=0`, `condition_on_previous_text=False`, `word_timestamps=True`, `vad_filter=False`, `task=transcribe` este o **configurație candidat**, NU un benchmark/calibrare pe RTX3070. Limba se detectează automat, dar vorbirea mixtă ro-ru necesită verificare.
+- Fișierele WAV temporare sunt eliminate automat, fiecare cuvânt are timestamp absolut față de sursă, iar rezultatul este întotdeauna `REVIEW_REQUIRED` cu `automaticCuttingAllowed:false`. Lipsa cuvintelor și repetițiile apar ca alerte, fără a fi acceptate orbește.
+- Verifică preflight pentru media offline, extensii, fereastră în afara duratei, coduri duplicate și sursă schimbată (durata ffprobe vs diagnostic); orice eroare blochează procesarea, fără modificări în Premiere. Rezultatele ASR conțin transcript privat și se păstrează NUMAI local, niciodată în repository.
+- Parametrul explicit `--execute` și modelul local previn rularea întâmplătoare. Integrarea finală va fi invocată prin butonul existent 01, fără comenzi manuale cerute utilizatorului.
+- **CI MOCK PASS:** https://github.com/Sankio9/ai-video-editor-updates/actions/runs/40556352429 — 18 teste planner + 12 teste executor/FFmpeg/CUDA simulate (30 total), cu Python compile. Niciun test nu a utilizat fișiere reale media, RTX3070, model ASR sau Premiere LIVE. Nu afirma performanța/precizia audio.
