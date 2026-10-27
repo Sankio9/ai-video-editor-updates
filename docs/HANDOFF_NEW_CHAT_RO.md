@@ -57,3 +57,9 @@ Pe «Bubuieci», R1.9.13 a refuzat montajul pentru 10/19 sincronuri (9 accept, 8
 - Defect UI identificat în screenshot: în modul Independent rămân afișate controalele legacy `Verifică rezultatul`, `Selectează planul R1514 și apasă Verifică` și labelul vechi `R1.5.15`. Acestea aparțin traseului synced/legacy; nu trebuie acționate ca verificare a inserării R2.0. Candidatul UI următor trebuie să ascundă controalele/instrucțiunile legacy doar când modul=independent și să le restabilească în synced; nu schimba motorul validat.
 - Următoarea acțiune indispensabilă a utilizatorului: screenshot cu timeline-ul V3 (MOGRT, gap-uri/grupuri) și Program Monitor la moment cu subtitrare; verifică rendering/diacritice, nu doar readback API.
 - Niciun test LIVE 03/04 completat. 05 VO HOLD. Stable v1.9.13 neatins.
+
+## 2026-10-27 — Confirmare vizuală PREMIERE LIVE pentru 02 independent
+- Utilizatorul a transmis captură reală Program Monitor + timeline, apoi a confirmat explicit: „arata bine, am verificat. mai tirziu vom introduce o regula noua pentru subtitrari”.
+- Program Monitor afișează efectiv subtitrarea română cu diacritice („Vreau să fiu bucătar deoarece am privit un serial”), alb pe negru. Pe V3 sunt segmentele MOGRT generate, iar V1 și A1 sunt vizibil goale. Panoul a raportat anterior „READBACK PASS: 43 MOGRT pe V3 — SCRIPT_PREVIEW”.
+- Status: **02 INDEPENDENT – PREMIERE LIVE PASS inițial pentru inserare/readback/render vizual**, pe secvență de test; NU echivalează cu toate criteriile P0 (regresii, 02 SYNCED, cross-DOCX, toate textele etc.). Urmează 03 NameTag independent V4, apoi 04 Cartoane independent V5.
+- Utilizatorul dorește o **regulă nouă pentru subtitrări mai târziu**; conținutul regulii nu a fost încă furnizat. Nu inventa și nu modifica 02 până la specificare. Nu strica testul pozitiv.
