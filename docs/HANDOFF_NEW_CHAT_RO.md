@@ -129,3 +129,9 @@ Pe «Bubuieci», R1.9.13 a refuzat montajul pentru 10/19 sincronuri (9 accept, 8
 - Textul vizibil: `UNII ELEVI ÎNVAȚĂ ÎN SISTEM / DUAL: ȘI LA ȘCOALĂ, ȘI LA MUNCĂ`, colorat `ELEVI ÎNVAȚĂ`, `ȘCOALĂ,`. Evaluare: aspect şi două rânduri conforme. Totuși conceptul `SISTEM DUAL` este neaccentuat, deși este cheia mesajului; următorul patch candidat trebuie să prioritizeze expresiile tematice compuse în fața unor cuvinte generice.
 - Status: `PREMIERE LIVE VISUAL PARTIAL PASS`; lipsește readback-ul 8/8 cu text și Bold Words, verificarea altor cartoane și testele V5 ocupată/rollback. Captura nu certifică sincronizare audio sau nemodificarea pistelor prin hash.
 - Nu face release stable şi nu pretinde 04 complet validat. R2.0.4 Beta publicat, R1.9.13 Stable protejat, VO 05 HOLD.
+
+
+## R2.0.5 — corecție semantică candidat izolat (NU publicat, 27 octombrie 2026)
+- După captura live R2.0.4, branch feature/r20-independent-graphics-gate include experimental/r20/r205/candidate/tools/r204_carton_layout.py: selectarea literală a conceptului de 2 cuvinte dinaintea unui colon explicativ, urmată de termeni tematici după colon. Exemplu vizat: `SISTEM DUAL:` trebuie să aibă prioritate față de `ELEVI ÎNVAȚĂ`, păstrând 2 rânduri, textul intact și indicii Bold 1-based fizic chiar peste line break. Cifra/procentul rămâne prioritară; fără inventarea expresiilor.
+- Teste sintetice candidate în experimental/r20/r205/tests/test_r205_semantics.py (inclusiv 200 inputuri random cu seed) și workflow CI separat .github/workflows/r205-semantic-regression.yml în branch. **Nu marca PASS până nu sunt verificate rezultatele CI/locale.**
+- R2.0.4 Beta NU a fost suprascris, stable R1.9.13 NU a fost schimbat, nu există release R2.0.5. Testul live vizual R2.0.4 e PARȚIAL; confirmarea reală a celor 8/readback/rollback rămâne deschisă.
