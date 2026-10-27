@@ -12,6 +12,7 @@ runner.read_json=lambda path,default=None:json.loads(Path(path).read_text('utf-8
 runner.prepare=lambda root,installed,info:{'ok':True,'action':'waiting_for_close'}
 runner.set_status=lambda *a,**kw:None
 sys.modules['runner']=runner
+sys.path.insert(0,str(ROOT))
 sys.path.insert(0,str(ROOT/'updater'))
 beta=importlib.import_module('beta')
 
