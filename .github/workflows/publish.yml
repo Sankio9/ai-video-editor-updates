@@ -26,6 +26,8 @@ jobs:
             python3 scripts/build_r198.py
           elif [ "$VERSION" = "1.9.9" ]; then
             python3 scripts/build_r199.py
+          elif [ "$VERSION" = "1.9.10" ]; then
+            python3 scripts/build_r1910.py
           else
             python3 scripts/publish_encoded.py --output dist/AIVE_UPDATE.zip
           fi
