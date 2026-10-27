@@ -184,7 +184,11 @@ def save_report(report,destination):
 def main():
     a=argparse.ArgumentParser(description="R2.0.6 experimental offline ASR, never Premiere")
     a.add_argument("--request",type=Path,required=True)
-    a.add_argument("--source-map",type=Path,required=True)
+    source_input=a.add_mutually_exclusive_group(required=True)
+    source_input.add_argument("--source-map",type=Path,
+                              help="Already resolved local source paths")
+    source_input.add_argument("--project-inventory",type=Path,
+                              help="Recursive Project Panel inventory from CEP; no manual mapping")
     a.add_argument("--output",type=Path,required=True)
     a.add_argument("--model-path",type=Path,required=True)
     a.add_argument("--ffmpeg",default="ffmpeg")
@@ -195,7 +199,12 @@ def main():
     a.add_argument("--execute",action="store_true",help="Requires explicit higher-level application action")
     p=a.parse_args()
     request=json.loads(p.request.read_text("utf8"))
-    source_map=json.loads(p.source_map.read_text("utf8"))
+    if p.project_inventory:
+        from r206_source_inventory import sources_for_rescan
+        inventory=json.loads(p.project_inventory.read_text("utf8"))
+        source_map=sources_for_rescan(request,inventory)
+    else:
+        source_map=json.loads(p.source_map.read_text("utf8"))
     validated=validate(request,source_map)
     if not p.execute:
         print(json.dumps({"ok":True,"dryRun":True,"sourceCount":len(validated),
