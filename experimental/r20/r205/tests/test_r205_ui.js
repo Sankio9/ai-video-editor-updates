@@ -34,7 +34,8 @@ const modules={},triggers={},legacy={},states={};
 ['subs','name','caps'].forEach(k=>{
   const m=new Node('details','module'+({subs:'Subs',name:'Name',caps:'Caps'}[k]));
   const content=new Node('div');
-  m.content=content;m.querySelector=()=>content;m.appendChild(content);
+  const legacyTag=new Node('span');legacyTag.textContent='R1.7 · V5';
+  m.content=content;m.legacyTag=legacyTag;m.querySelector=q=>q==='.content'?content:q==='summary .small'?legacyTag:null;m.appendChild(content);
   main.appendChild(m);modules[k]=m;
   const desc=new Node('div');desc.textContent='LEGACY R17 / R143 description';
   const check=new Node('button');check.textContent='Verifică rezultatul';
@@ -74,6 +75,7 @@ for(const k of ['subs','name','caps']){
   assert.equal(legacy[k][2].style.display,'none');
   // Independent mode hides ALL old instructions and controls, not R20 action/status.
   mode.value='independent';mode.onchange();
+  assert.equal(modules[k].legacyTag.textContent,'R2.0 Beta · '+({subs:'V3',name:'V4',caps:'V5'}[k]));
   assert.equal(pos.style.display,'block');
   legacy[k].forEach(x=>assert.equal(x.style.display,'none'));
   assert.notEqual(triggers[k].style.display,'none');
@@ -81,6 +83,7 @@ for(const k of ['subs','name','caps']){
   assert(hint.textContent.indexOf('EDITORIAL_PREVIEW')>=0 || k==='subs');
   // Toggling to synchronized must restore original visual styles + click handler.
   mode.value='synced';mode.onchange();
+  assert.equal(modules[k].legacyTag.textContent,'R1.7 · V5');
   assert.equal(pos.style.display,'none');
   assert.equal(legacy[k][0].style.display,'');
   assert.equal(legacy[k][1].style.display,'');
