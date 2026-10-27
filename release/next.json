@@ -1,12 +1,17 @@
 {
-  "version": "1.9.10",
-  "builder": "scripts/build_r1910.py",
-  "requires": "1.9.9",
+  "version": "1.9.11",
+  "builder": "scripts/build_r1911_speech.py",
+  "requires": "1.9.10",
+  "purpose": "Speech-first montage; reporter TC hint only; no timecode fallback",
   "files": [
     {
-      "path": "cep/r193_workflow.js",
-      "before_sha256": "b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222",
-      "sha256": "fcafbea9854bc7176b68342473d9b27f362a8cfc6e3334063532c1b16df81dd9"
+      "path": "tools/r193_pipeline.py",
+      "before_sha256": "f710ce32094d858bbb0137b1790625733a2c1e2b215c438179d3e9f3e68ff029",
+      "sha256": "b5c9ebba6bf9e1baa204868751c9a232392f9ad16ae488dc7aa394835777a856"
+    },
+    {
+      "path": "tools/r1911_speech_first.py",
+      "before_sha256": null
     }
   ]
 }
