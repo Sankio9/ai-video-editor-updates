@@ -19,3 +19,11 @@ jobs:
         run: |
           node experimental/r20/tests/guard.test.js
           node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+      - name: Build and verify inert R2.0 updater candidate
+        run: python3 experimental/r20/candidate/build_release_candidate.py
+      - name: Archive experimental payload (not a release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: r20-candidate-NOT-FOR-INSTALL
+          path: dist/R20_CANDIDATE_UPDATE.zip
+
