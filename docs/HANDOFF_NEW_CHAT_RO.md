@@ -81,3 +81,13 @@ Pe «Bubuieci», R1.9.13 a refuzat montajul pentru 10/19 sincronuri (9 accept, 8
 - After 2.0.2 installed: open Premiere, Extensions AI Video Editor, updater section, select Beta to check/install following v2.x releases. No need for any launcher for subsequent beta releases; stable remains default.
 - Next LIVE test after bridge: `03 NameTag Independent V4`, currently V3 subtitles (43) LIVE PASS, V4 NameTag failed safely before write on old 2.0.0 due to paragraph 5 header issue. Confirm NameTag count and text/readback in Premiere and visuals, then module 04 V5.
 - Do not label R2 stable/final before full P0. VO 05 remains HOLD.
+
+
+## 2026-10-27 — R2.0.3 NameTag AMB skip + Beta release (status)
+- În Premiere R2.0.2, modulul 03 independent s-a oprit înainte de V4: `NameTag incomplet: 2 identificări fără nume/funcție` (fără MOGRT inserate pe V4). La R2.0.0 a fost inițial `nu găsesc antet editorial pentru 5`, deja remediat în R2.0.2.
+- Scenariul DOCX anterior a fost inspectat **privat** prin căutare în Library: cele două pasaje fără nume/funcție sunt blocuri **AMB** (ambianță editorială, sursa de test 9974), nu persoane pentru NameTag. NU urca DOCX-ul și nici textul real în repository.
+- Regula R2.0.3: `SKIP_AMBIENCE` automat numai dacă există antet AMB explicit și cod sursă compatibil; afișează fiecare CUT omis în rezultatul permanent. `REVIEW_MISSING_IDENTITY` pentru orice alt sincron fără nume/rol => consimțământ explicit ÎNAINTE de orice inserare; refuz -> zero modificări pe V4. Codurile contradictorii -> STOP. NICIODATĂ inventare de nume/funție.
+- Se așteaptă **8 NameTag-uri valide** și **2 fragmente AMB excluse**; acest rezultat nu este încă PREMIERE LIVE confirmat, doar simulator/mocks + CI PASS pe cazuri sintetice (inclusiv analog al scenariului).
+- [v2.0.3 Beta prerelease](https://github.com/Sankio9/ai-video-editor-updates/releases/tag/v2.0.3) PUBLICAT, branch source fixat la `6a4be13ea04efcb6fb7fd09286fbdb658df6661a`, GitHub Actions PASS (regresii + verificare checksum), ZIP SHA256 `f44b227d9db486571cba12696ae7953485937a369f06f9eabc282159fc14342f`. Exact două fișiere, `cep/r20_panel.js` și `tools/r20_graphics_plans.py`, cu `before_sha256` pentru R2.0.2. **R1.9.13 rămâne latest stable**.
+- Următorul pas pentru utilizator: În Premiere, secțiunea Actualizări > selector **Beta** > `Verifică actualizări Beta` > `Descarcă și pregătește Beta`; Salvează proiect TEST / închide Premiere / redeschide. Nu există nevoie de CMD/ZIP manual. Apoi 03 pe V4 goală; verifică mesaj `PREMIERE READBACK`, lista `SKIP_AMBIENCE`, afișare Program Monitor, păstrarea V3 cu 43 subtitrări.
+- R2.0.3 NU e certificată stable, LIVE test V4 pending. 04 V5 next; 05 VO HOLD.
