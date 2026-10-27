@@ -29,3 +29,5 @@ Pe «Bubuieci», R1.9.13 a refuzat montajul pentru 10/19 sincronuri (9 accept, 8
 - Teste executate: **7 Python planner PASS; 18 mock JSX PASS; 4 updater SHA/dual CEP roots/rollback PASS**. Workflow GitHub Actions pentru mock JSX a trecut. Acestea sunt **LOCAL PASS**, nu `PREMIERE LIVE PASS`.
 - Pentru release este necesar să se pregătească pachetul updater bazat pe hash-urile versiunii R1.9.13, cu integrare surse candidate, apoi un opt-in LIVE TEST pe proiect duplicat. `release/next.json` și release-ul stabil v1.9.13 rămân neatinse. Nu publicați R2.0 ca stabil înainte de P0 LIVE PASS.
 - Într-un chat nou, **recuperați direct codul din PR #1**, nu reconstruiți din memorie. Generatorul nou încă nu a fost testat pe DOCX-ul Bubuieci real, care nu era în arhiva de surse.
+
+- **Ultimul candidat CI:** run GitHub Actions `40501323141` pe PR #1 **SUCCESS**; sunt verificate mock JSX și build-ul de pachet candidat cu hashuri fixe, fără publicare în Releases. Un eșec la readback final declanșează acum încercarea de rollback a inserărilor sesiunii; test real Premiere încă necesar.
