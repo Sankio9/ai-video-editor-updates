@@ -1,16 +1,23 @@
 {
-  "version": "1.9.11",
-  "builder": "scripts/build_r1911_speech.py",
-  "requires": "1.9.10",
-  "purpose": "Speech-first montage; reporter TC hint only; no timecode fallback",
+  "version": "1.9.12",
+  "builder": "scripts/build_r1912.py",
+  "requires": "1.9.11",
+  "prerelease": true,
+  "purpose": "Untimed <=8min full ASR; partial IN/OUT ASR window hints; no unsafe TC fallback",
   "files": [
     {
       "path": "tools/r193_pipeline.py",
-      "before_sha256": "f710ce32094d858bbb0137b1790625733a2c1e2b215c438179d3e9f3e68ff029",
-      "sha256": "b5c9ebba6bf9e1baa204868751c9a232392f9ad16ae488dc7aa394835777a856"
+      "sha256": "44d18e3ba2d79327545334d987de21d6e6e220309226313a2fdb83db080f932d",
+      "before_sha256": "b5c9ebba6bf9e1baa204868751c9a232392f9ad16ae488dc7aa394835777a856"
     },
     {
-      "path": "tools/r1911_speech_first.py",
+      "path": "tools/r193_docx_reader.py",
+      "sha256": "2d0c4c74d01ec22a678cf7a5f2cad942b0c392af9cbc1e58d55b30481b46b819",
+      "before_sha256": "c8b682a2fd1f7b18273227914e84e8e1547afd9f1f4c7e0bd1ecd86ba851a822"
+    },
+    {
+      "path": "tools/r1912_optional_tc.py",
+      "sha256": "c5d3178a758143cba942c34f5dd6f98600c798eac7334a334011de55c05cffd0",
       "before_sha256": null
     }
   ]
