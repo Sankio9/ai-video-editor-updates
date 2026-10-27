@@ -31,3 +31,13 @@ Pe «Bubuieci», R1.9.13 a refuzat montajul pentru 10/19 sincronuri (9 accept, 8
 - Într-un chat nou, **recuperați direct codul din PR #1**, nu reconstruiți din memorie. Generatorul nou încă nu a fost testat pe DOCX-ul Bubuieci real, care nu era în arhiva de surse.
 
 - **Ultimul candidat CI:** run GitHub Actions `40501323141` pe PR #1 **SUCCESS**; sunt verificate mock JSX și build-ul de pachet candidat cu hashuri fixe, fără publicare în Releases. Un eșec la readback final declanșează acum încercarea de rollback a inserărilor sesiunii; test real Premiere încă necesar.
+
+
+## 2026-10-27 — R2.0 LIVE test handoff (după creare proiect test)
+- Proiectul/secvența de test Premiere au fost create de utilizator; acest lucru NU reprezintă încă test de inserare MOGRT.
+- [R2.0 pre-release experimental](https://github.com/Sankio9/ai-video-editor-updates/releases/tag/v2.0.0) este publicat prin workflow GitHub separat, din commit înghețat `7f35a35058bb97f7925ba35e88a05ae9f39ed4ae`; testele CI/mock au trecut. **Nu e Latest stable** și updaterul standard nu îl oferă automat.
+- Latest stable v1.9.13 a fost re-verificat DUPĂ publicarea experimentală.
+- Asset R2.0 `AIVE_UPDATE.zip`, 18185 bytes, SHA-256 `1d326ac503a658fb1725acb866d8ac3bd6b3a812288f3ac4d474c78bdbbc0003`. Are exact patru fișiere: `cep/index.html` cu before SHA obligatoriu, `cep/r20_panel.js`, `cep/jsx/r20_graphics.jsx`, `tools/r20_graphics_plans.py`.
+- Lansatorul de test one-click a fost creat ca `AIVE_R20_Test_GitHub.cmd` în chatul curent. El NU este arhiva update de instalat manual: verifică release-ul prerelease/pinned digest, folosește `updater/runner.py` existent (hash controlat), `prepare()` cu staging + verificare de hash și instalare doar după închiderea Premiere. La relansare după instalare oferă rollback `2.0.0 -> 1.9.13`, Premiere închis.
+- Intervenția utilizatorului: descărcarea lansatorului, dublu-click, acceptarea testului și închiderea Premiere, apoi redeschiderea pe secvența de probă. Testul inițial: secțiunea 00 selectează DOCX, 02 selectează Independent din scenariu, V3 goală, generează. Fotografia/mesajele de status stabilesc următoarea corecție.
+- **Status**: încă [PREMIERE LIVE NOT TESTED]. Este interzisă promovarea ca stable, fuziunea PR #1 sau testele pe producție până la testele P0 LIVE. 05 VO rămâne HOLD. V5 overwrite destructiv este dezactivat preventiv în modul independent.
