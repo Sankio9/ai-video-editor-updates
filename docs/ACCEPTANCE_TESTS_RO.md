@@ -73,3 +73,11 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [ ] **LIVE Premiere R2.0.5 nevalidat**: restaurare controale legacy la comutare, readback al noilor evidențieri, text 8/8 și V5 ocupată, rollback real.
 - [ ] **01 montaj nu e P0 PASS**: 9 accept, 8 review, 2 NO_MATCH în ultimul diagnostic R1.9.13; ASR 9974 defect. Modul 05 HOLD.
 - **IMPORTANT**: Nu marca release Stable din acest CI; R1.9.13 continuă ca ultimul Stable confirmat.
+
+
+## R2.0.6 — plan de retranscriere selectivă (candidate, 27 octombrie 2026)
+- [x] **CI PASS:** GitHub Actions run `40555364392` — teste sintetice de alegere ferestre ASR (fără materiale private), sintaxă Python, configurare Stable neschimbată.
+- [x] **Protecție:** `automaticCuttingAllowed:false`, `safeToModifyPremiereTimeline:false` în orice rezultat, inclusiv status necunoscut. Nu se aplică TC drept IN/OUT. Durată sursă/cod contradictoriu => STOP.
+- [x] **Confidențialitate:** teste de ieșire fără `scriptText`, `startHeard`, `endHeard`, nume, DOCX path sau transcript. Execuția nu transcrie ori modifică Premiere, produce numai recomandări de cerere ASR locală.
+- [ ] **BLOCANT:** codul `experimental/r20/r206/tools/r206_selective_asr.py` este laborator independent, **nu e conectat încă la butonul 01**. Urmează retranscriere locală efectivă pentru ferestre selectate, cache, abordare multilingual și comparație cu scenariul pe audio real.
+- [ ] **BLOCANT:** confirmare în Premiere că reevaluarea celor 10 fragmente nesigure recuperează IN/OUT valide sau le lasă în REVIEW, fără tăieturi false. Acesta este P0 LIVE necesar înainte de Stable.
