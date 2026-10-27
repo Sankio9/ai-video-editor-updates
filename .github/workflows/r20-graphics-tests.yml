@@ -1,4 +1,4 @@
-name: R2.0 independent graphics mock gate
+name: R2.0 graphics regression candidate gate
 on:
   pull_request:
     paths:
@@ -15,35 +15,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Guard safety tests
+      - name: Guard and Premiere mocked MOGRT tests
         run: |
           node experimental/r20/tests/guard.test.js
           node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node --check experimental/r20/candidate/cep/r20_panel.js
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install parser-test dependency
-        run: python -m pip install "python-docx==1.2.0"
-      - name: R2.0.1 NameTag format regressions
-        run: cd experimental/r20/candidate && python -m unittest discover -s tests_r20 -p 'test_r201_nametag.py' -v
-      - name: Build SHA-pinned R2.0.1 one-file test payload
-        run: python experimental/r20/hotfix/build_r201.py --output dist/R201_CANDIDATE_UPDATE.zip
-      - name: Archive experimental payload (not a release)
-        uses: actions/upload-artifact@v4
-        with:
-          name: r201-NOT-FOR-INSTALL
-          path: dist/R201_CANDIDATE_UPDATE.zip
-
-      - name: R2.0.2 beta channel regression checks
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: NameTag header, review and skip approval regressions
         run: |
-          cd experimental/r20/beta_bridge
-          python -m unittest discover -s tests -p 'test_beta.py' -v
-          node --check cep/aive_updater_beta.js
-          python -m py_compile updater/beta.py
-      - name: Build SHA-pinned R2.0.2 beta bootstrap
-        run: python experimental/r20/beta_bridge/build_r202.py --output dist/R202_CANDIDATE_UPDATE.zip
-      - name: Archive beta bootstrap prototype (not a release)
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p 'test_r201_nametag.py' -v
+          python -m unittest discover -s tests_r20 -p 'test_r203_review.py' -v
+      - name: Build and verify pinned R2.0.3 two-file Beta update
+        run: python experimental/r20/hotfix/build_r203.py --output dist/R203_CANDIDATE_UPDATE.zip
+      - name: Archive candidate for code review (do not install manually)
         uses: actions/upload-artifact@v4
         with:
-          name: r202-NOT-FOR-INSTALL
-          path: dist/R202_CANDIDATE_UPDATE.zip
+          name: r203-review-only
+          path: dist/R203_CANDIDATE_UPDATE.zip
