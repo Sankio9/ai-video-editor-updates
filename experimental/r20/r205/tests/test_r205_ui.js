@@ -56,7 +56,7 @@ const document={
 };
 const window={
   __adobe_cep__:{},
-  cep_node:{require:()=>({})},
+  cep_node:{require:require},
   AIVE_CONTEXT_R184:{}
 };
 class FakeMutationObserver {observe(){}}
