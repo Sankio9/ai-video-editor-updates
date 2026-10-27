@@ -8,7 +8,7 @@ from pathlib import Path
 from docx import Document
 from reportaj_r1_parse_docx import extract
 from r193_docx_reader import read as read_r193
-from r161_prepare_nametags import card_for, editorial_block, source_headers
+from r161_prepare_nametags import card_for
 from r171_layout import split_cards, highlight_by_words, clean
 from r153_prepare import split_balanced
 
@@ -45,6 +45,61 @@ def _extract(docx):
         raise ValueError('Cititorul nou vede mai multe cartoane decât cel legacy; revizuire obligatorie.')
     return segments,captions,first
 
+
+def _editorial_markers(docx:Path):
+    """Collect identity-boundary markers without requiring standalone BOLD 4-digit codes.
+
+    Reportage scripts may place SINCRON/AMB, name, role, source and TC on
+    separate *lines of the same paragraph*. The old R1.6 finder only sees an
+    entirely bold, four-digit *paragraph*, which misses these layouts.
+    """
+    markers=[]
+    for index, paragraph in enumerate(Document(docx).paragraphs):
+        for line in paragraph.text.splitlines():
+            line=line.strip()
+            if re.match(r'^(?:SINCRON|AMB)\b\s*[:–—-]',line,re.I):
+                markers.append((index,'editorial',None))
+            elif re.fullmatch(r'\d{4}',line):
+                markers.append((index,'source',line))
+    return markers
+
+
+def _name_blocks(segments,markers):
+    """Yield (segment, card, block number) for consecutive editorial blocks.
+
+    Always count a reintroduced speaker as a new block after an intervening
+    speaker or a fresh heading. Never globally deduplicate by speaker name.
+    If the source has no explicit heading, use only *consecutive* identities
+    present in the already approved DOCX parser, not fabricated headings.
+    """
+    prior_identity=None;prior_marker=None;block_number=0
+    for seg in segments:
+        card=card_for(seg)
+        if card is None:
+            # An unidentified segment interrupts contiguous identity grouping.
+            prior_identity=None;prior_marker=None
+            yield seg,None,None
+            continue
+        index=int(seg['paragraph_start'])
+        code=seg.get('source_code')
+        before=[m for m in markers if m[0]<=index]
+        if before:
+            # Preserve source-code checks: a contradicting explicit SOURCE
+            # marker may not be silently mapped onto a named speaker.
+            last_source=next((m for m in reversed(before) if m[1]=='source'),None)
+            if last_source and code and last_source[2]!=code:
+                raise ValueError('NameTag REVIEW: cod sursă DOCX %s ≠ %s la CUT-%02d' %
+                                 (last_source[2],code,seg['ordinal']))
+            marker=(before[-1][0],before[-1][1])
+        else:
+            marker=None
+        identity=(code,card[0],card[1],bool(card[2]))
+        if identity!=prior_identity or marker!=prior_marker:
+            block_number+=1
+        prior_identity=identity;prior_marker=marker
+        yield seg,card,block_number
+
+
 def build(docx:Path, module:str, separator:float=SEPARATOR):
     docx=Path(docx).resolve()
     if not docx.is_file() or docx.suffix.lower()!='.docx':raise ValueError('DOCX invalid / fișier lipsă')
@@ -75,27 +130,18 @@ def build(docx:Path, module:str, separator:float=SEPARATOR):
                 add(group,chunk,duration_for(chunk,minimum=.9,maximum=6.0,cps=13.0),
                     {'fontStyle':style,'sourceParagraph':seg['paragraph_start']})
     elif module=='03':
-        headers=source_headers(docx)
-        paragraphs=[p.text.strip() for p in Document(docx).paragraphs]
-        speech_headers=[i for i,t in enumerate(paragraphs) if re.match(r'^(SINCRON|AMB)\s*:',t,re.I)]
+        markers=_editorial_markers(docx)
         recorded=set()
-        for seg in segments:
-            name=card_for(seg)
+        for seg,name,block in _name_blocks(segments,markers):
             if name is None:
-                skipped.append({'paragraph':seg['paragraph_start'],'reason':'Lipsesc nume/funcție din DOCX'})
+                skipped.append({'paragraph':seg['paragraph_start'],
+                                'cutId':'CUT-%02d'%seg['ordinal'],
+                                'reason':'Lipsesc nume/funcție din DOCX'})
                 continue
-            # One editorial heading, not one item per cut; same person may reappear later.
-            if headers:
-                block=editorial_block(seg,headers)
-            else:
-                preceding=[i for i in speech_headers if i<seg['paragraph_start']]
-                if not preceding:raise ValueError('NameTag: nu găsesc un antet editorial pentru '+str(seg['paragraph_start']))
-                block=preceding[-1]
-            group=str(block)
-            if group in recorded:continue
-            recorded.add(group)
+            if block in recorded:continue
+            recorded.add(block)
             person,title,anonymous=name
-            add('BLOCK-'+group,person,duration_for(person+' '+title,minimum=3.3,maximum=5.5,cps=16),
+            add('BLOCK-'+str(block),person,duration_for(person+' '+title,minimum=3.3,maximum=5.5,cps=16),
                 {'name':person,'title':title,'anonymous':bool(anonymous),'sourceParagraph':seg['paragraph_start']})
     else:
         if not captions:raise ValueError('Nu există cartoane editoriale în DOCX')
