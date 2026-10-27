@@ -1,0 +1,6 @@
+{
+  "version": "2.0.3",
+  "head_sha": "6a4be13ea04efcb6fb7fd09286fbdb658df6661a",
+  "requires_installed": "2.0.2",
+  "purpose": "NameTag skip REVIEW explicit user confirmation; 2-file beta patch"
+}
