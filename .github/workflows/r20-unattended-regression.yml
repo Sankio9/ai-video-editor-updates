@@ -48,6 +48,12 @@ jobs:
           python -m unittest discover -s experimental/r20/r206/tests -p 'test_r206_selective_asr.py' -v
           python -m py_compile experimental/r20/r206/tools/r206_retranscribe.py
           python -m unittest discover -s experimental/r20/r206/tests -p 'test_r206_retranscribe.py' -v
+      - name: Strict recursive Project Panel source map and Premiere scanner mocks
+        run: |
+          python -m py_compile experimental/r20/r206/tools/r206_source_inventory.py
+          python -m unittest discover -s experimental/r20/r206/tests -p 'test_r206_source_inventory.py' -v
+          node --check < experimental/r20/r206/cep/jsx/r206_project_scan.jsx
+          node experimental/r20/r206/tests/test_r206_project_scan_mock.js
       - name: Require published Stable to stay v1.9.13 pending LIVE certification
         env:
           GH_TOKEN: ${{ github.token }}
