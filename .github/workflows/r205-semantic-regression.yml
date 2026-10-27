@@ -1,0 +1,26 @@
+name: R2.0.5 Semantic Carton Candidate Checks
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r205/**'
+      - '.github/workflows/r205-semantic-regression.yml'
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax and semantic/unit/property tests (no Premiere LIVE claims)
+        run: |
+          python -m py_compile experimental/r20/r205/candidate/tools/r204_carton_layout.py
+          python -m unittest discover -s experimental/r20/r205/tests -p test_r205_semantics.py -v
+      - name: Ensure stable and R2.0.4 payloads untouched by this candidate
+        run: |
+          git diff --quiet HEAD^ HEAD -- release/next.json release/r204-cartoane-request.json
+          test -f experimental/r20/r204/candidate/tools/r204_carton_layout.py
+          test -f experimental/r20/r205/candidate/tools/r204_carton_layout.py
