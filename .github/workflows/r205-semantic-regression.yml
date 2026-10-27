@@ -19,6 +19,13 @@ jobs:
         run: |
           python -m py_compile experimental/r20/r205/candidate/tools/r204_carton_layout.py
           python -m unittest discover -s experimental/r20/r205/tests -p test_r205_semantics.py -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: CEP mode switch, legacy visibility and restore regression
+        run: |
+          node --check experimental/r20/r205/candidate/cep/r20_panel.js
+          node experimental/r20/r205/tests/test_r205_ui.js
       - name: Ensure stable and R2.0.4 payloads untouched by this candidate
         run: |
           git diff --quiet HEAD^ HEAD -- release/next.json release/r204-cartoane-request.json
