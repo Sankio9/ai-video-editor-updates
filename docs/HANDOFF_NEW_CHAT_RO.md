@@ -122,3 +122,10 @@ Pe «Bubuieci», R1.9.13 a refuzat montajul pentru 10/19 sincronuri (9 accept, 8
 - Regresie ADĂUGATĂ în feature/r20-independent-graphics-gate: experimental/r20/r204/tests/test_r204_properties.py (200 combinații sintetice, indici Bold valizi, text păstrat, liniile <=33, determinism, Unicode); commit a51d5f3aca5cc55941e159784969e6fa58ab6ca1. Testul corespondent a trecut LOCAL pe codul real R2.0.4 + r171_layout din pachetul propriu: 200/200 cazuri, aprox. 12,1s total.
 - Un stres inițial 1.200 de cazuri într-un singur proces a depășit limita sesiune; nu reprezintă dovada unui blocaj per carton. Timpii pe exemple individuale realiste observați în teste au fost ~0,001–0,1s; fără benchmark local Premiere/Windows. Nu prezenta acest lucru ca viteză R2.0 certificată.
 - R2.0.4 Beta rămâne publicat, sursa executabilă din release NU a fost modificată de acest test aditiv. LIVE pe V5 încă **NEVERIFICAT**. Următoarea intervenție a utilizatorului este indispensabilă doar pentru test Premiere 25.6.4 pe copie/secvență TEST și confirmarea readback/imaginii. Nu cere ZIP manual.
+
+
+## R2.0.4 — Captură din Premiere LIVE (27 octombrie 2026)
+- Utilizatorul a transmis screenshot Premiere la Program Monitor TC `00:00:40:19` cu cartonul vizibil în două rânduri, Unicode corect și evidențiere Orange/Bold funcțională. Timeline arată 8 MOGRT pe V5, alte grafici pe V3/V4, fără montaj pe V1/A1 aparent; V3/V4 au pictogramă eye slash (ascunse la monitorizare).
+- Textul vizibil: `UNII ELEVI ÎNVAȚĂ ÎN SISTEM / DUAL: ȘI LA ȘCOALĂ, ȘI LA MUNCĂ`, colorat `ELEVI ÎNVAȚĂ`, `ȘCOALĂ,`. Evaluare: aspect şi două rânduri conforme. Totuși conceptul `SISTEM DUAL` este neaccentuat, deși este cheia mesajului; următorul patch candidat trebuie să prioritizeze expresiile tematice compuse în fața unor cuvinte generice.
+- Status: `PREMIERE LIVE VISUAL PARTIAL PASS`; lipsește readback-ul 8/8 cu text și Bold Words, verificarea altor cartoane și testele V5 ocupată/rollback. Captura nu certifică sincronizare audio sau nemodificarea pistelor prin hash.
+- Nu face release stable şi nu pretinde 04 complet validat. R2.0.4 Beta publicat, R1.9.13 Stable protejat, VO 05 HOLD.
