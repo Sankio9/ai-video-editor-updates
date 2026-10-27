@@ -156,14 +156,23 @@ def build(docx:Path, module:str, separator:float=SEPARATOR):
                      'boldWords':bold,'colorScheme':'Orange','sourceParagraph':block['paragraph'],
                      'page':k+1,'pageCount':len(pages)})
     if not items:raise ValueError('Nu există elemente valide pentru categoria '+module)
-    if module=='03' and skipped: # disallow silent omitted named blocks
-        raise ValueError('NameTag incomplet: %d identificări fără nume/funcție. Revizuire editorială obligatorie.'%len(skipped))
+    # Unele sincronuri nu au IDENTIFICARE editorială: nu inventa nume și
+    # nu opri burtierele valide. Raportează exact fiecare CUT nerecunoscut,
+    # iar CEP cere acceptare explicită ÎNAINTE de orice import pe V4.
+    if module=='03':
+        for entry in skipped:
+            if not isinstance(entry.get('cutId'),str) or not re.fullmatch(r'CUT-\d+',entry['cutId']):
+                raise ValueError('Identificare invalidă în lista REVIEW.')
+            if not isinstance(entry.get('paragraph'),int) or entry['paragraph']<0:
+                raise ValueError('Paragraf invalid în lista REVIEW.')
     return {'schema':SCHEMA,'module':module,'mode':'independent',
             'timing':'SCRIPT_PREVIEW' if module=='02' else 'EDITORIAL_PREVIEW',
             'docx_sha256':hashlib.sha256(docx.read_bytes()).hexdigest(),
             'sourceDocx':docx.name,'separatorSeconds':separator,'items':items,
             'totalItems':len(items),'groups':len({a['groupId'] for a in items}),
-            'skipped':skipped,'containsAudioSync':False,'generatorVersion':'R2.0-candidate'}
+            'skipped':skipped,'reviewRequired':bool(skipped),
+            'reviewPolicy':'EXPLICIT_SKIP_APPROVAL' if skipped else 'NONE',
+            'containsAudioSync':False,'generatorVersion':'R2.0.3-review-gate'}
 
 def main():
     p=argparse.ArgumentParser()
@@ -176,5 +185,6 @@ def main():
     tmp.write_text(json.dumps(plan,ensure_ascii=False,indent=2),encoding='utf-8')
     tmp.replace(x.output)
     print(json.dumps({'ok':True,'plan':str(x.output),'count':plan['totalItems'],'groups':plan['groups'],
-                      'docx_sha256':plan['docx_sha256'],'timing':plan['timing']},ensure_ascii=False))
+                      'docx_sha256':plan['docx_sha256'],'timing':plan['timing'],
+                      'skipped':plan['skipped'],'reviewRequired':plan['reviewRequired']},ensure_ascii=False))
 if __name__=='__main__':main()
