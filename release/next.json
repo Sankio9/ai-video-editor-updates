@@ -1,17 +1,17 @@
 {
-  "version": "1.9.4",
+  "version": "1.9.8",
   "files": [
     {
       "path": "cep/r193_workflow.js",
-      "sha256": "527543efa3cab3ebbb176c9274719b60d713dbd3239e82054e0533b1134f9b7f",
+      "sha256": "b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222",
       "before_sha256": "d48db0182e03b9e8f8879c19af89600f6daa16adccd604867ab17c76f97534c4"
     },
     {
       "path": "tools/r193_pipeline.py",
-      "sha256": "d1b755639a9a790237e2340359fe3bd282898cfbc7364632aa03ad394ddb6077",
+      "sha256": "b888441cf6d58397f0387a65e1fe44503ca1c197061ef41152d70b79a830b791",
       "before_sha256": "c43b4dc8a3639d30281d718ebe9b4b15e29c75363afd693241e438ee1cce1971"
     }
   ],
-  "archive_sha256": "022402039bf7c4e9760426210823d56bd9ccd447943313d558bb998fe608fb1f",
-  "encoded_archive": "release/assets/v1.9.4.zip.b64"
+  "archive_sha256": "9d3760eeabf14dbc9989b20ca87560440507ed96b5a3f5ad8bdb2f29e51d6385",
+  "builder": "scripts/build_r198.py"
 }
