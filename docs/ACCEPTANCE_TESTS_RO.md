@@ -81,3 +81,8 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] **Confidențialitate:** teste de ieșire fără `scriptText`, `startHeard`, `endHeard`, nume, DOCX path sau transcript. Execuția nu transcrie ori modifică Premiere, produce numai recomandări de cerere ASR locală.
 - [ ] **BLOCANT:** codul `experimental/r20/r206/tools/r206_selective_asr.py` este laborator independent, **nu e conectat încă la butonul 01**. Urmează retranscriere locală efectivă pentru ferestre selectate, cache, abordare multilingual și comparație cu scenariul pe audio real.
 - [ ] **BLOCANT:** confirmare în Premiere că reevaluarea celor 10 fragmente nesigure recuperează IN/OUT valide sau le lasă în REVIEW, fără tăieturi false. Acesta este P0 LIVE necesar înainte de Stable.
+
+## R2.0.6 — executor local faster-whisper (CI, nu LIVE)
+- [x] `r206_retranscribe.py` oferă procesare locală opt-in a ferestrelor ASR, cu FFmpeg/ffprobe și model CTranslate2 preinstalat; cuvintele au timp ABSOLUT față de sursă. Artefactele sunt candidate marcate `REVIEW_REQUIRED`, nu tăieturi.
+- [x] 12 teste suplimentare cu FFmpeg/ASR simulate trecute în GitHub CI run `40556352429`; împreună cu 18 teste planner = 30 PASS, fără audio real.
+- [ ] Benchmark/validare RTX 3070 și audio ro/ru din reportaj, quality gates împotriva halucinațiilor, mapping Project Panel offline/duplicat, apelare prin **butonul 01** și verificare LIVE Premiere (înainte de orice release stable). Nu marca R2.0.6 instalabilă.
