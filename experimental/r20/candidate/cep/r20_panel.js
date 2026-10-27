@@ -73,8 +73,9 @@
          if(r&&r.needsChoice)conflict(key,r.inventory||[]);finish();return;}
        tok=r.token;status(key,plan.timing+' — '+plan.items+' MOGRT / '+plan.groups+' grupuri. Inserare pe '+cfg.track+'.');
        function next(){if(n>=plan.items){progress('Verific readback MOGRT',n,plan.items);
-           evalR20('verify',[plan.path,tok],function(ex,done){status(key,ex?'READBACK EROARE: '+ex.message:
-              ((done.ok?'[PREMIERE READBACK] ':'EROARE: ')+done.message));finish();});return;}
+           evalR20('verify',[plan.path,tok],function(ex,done){
+             if(ex||!done||!done.ok){abort('READBACK FINAL: '+(ex?ex.message:done&&done.message||'răspuns invalid'));return;}
+             status(key,'[PREMIERE READBACK] '+done.message);finish();});return;}
          if(sha(doc)!==plan.sha){abort('DOCX schimbat în timpul inserării');return;}
          progress('Inserez '+cfg.track+' · '+plan.timing,n,plan.items);
          evalR20('buildOne',[plan.path,tok,n],function(ex,out){if(ex||!out||!out.ok){abort('Inserarea '+(n+1)+'/'+plan.items+': '+(ex?ex.message:out&&out.message||'răspuns invalid'));return;}
