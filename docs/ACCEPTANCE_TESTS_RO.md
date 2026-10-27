@@ -37,3 +37,14 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] V3 păstrată vizual, V1/A1 fără montaj, inserare independentă V4.
 - [ ] Audio sync, V3/V4 aliniate pe montaj existent și regresii pe alte DOCX — NU încă validate.
 - [ ] 04 Cartoane V5 LIVE — următorul test.
+
+
+## R2.0.4 — Cartoane compacte & accente (TESTE DE ACCEPTARE)
+- [ ] **LIVE Premiere:** secvență TEST fără 01/V1/A1 și V5 goală; generează numai cartoanele DOCX pe V5. Nicio schimbare pe V1/A1/V3/V4; MOGRT readback text + `Bold Words` + Orange.
+- [ ] **LIVE vizual:** carton scurt într-un singur rând când încape, texte intermediare în numărul minim de rânduri, maxim 4×33 per pagină; fără cuvinte tăiate, spații de montaj sau deplasări neașteptate.
+- [ ] **LIVE vizual:** cifre/procente și cuvinte/fraze importante evidențiate numai pe tokenurile corecte; Unicode RO (ă â î ș ț, majuscule), cifre zecimale și mai multe pagini. Revizuire editorială a accentelor — `LOCAL PASS` nu certifică selecția semantică.
+- [ ] **LIVE preflight:** V5 ocupată cu MOGRT, foto sau video, la început/mijloc/final => inventar complet, **exact două opțiuni**; varianta de oprire nu schimbă timeline-ul. Ruta distructivă se testează numai dacă există rollback complet demonstrat.
+- [ ] **LIVE regresie:** NameTag R2.0.3 cu `SKIP_AMBIENCE`, 02 independent și mod 01 sincronizat; nicio rescriere accidentală.
+- [ ] **LIVE updater:** upgrade R2.0.3 → R2.0.4 prin Beta, manifest 2 fișiere, SHA-256, backup automat, rollback restaurând byte-exact cele două rădăcini CEP/fișierele anterioare; ZIP manual interzis. Stable nu devine R2.0.4.
+- [x] **RELEASE Beta publicat**: v2.0.4, prerelease, SHA-256 arhivă `dc5fe714758ec388a18ac317b113452a33a6a65e5ae1101b7cda6c792308be9f`, 8219 octeți. **Nu este LIVE PASS**.
+- [x] **LOCAL/CI:** teste sintetice layout, regresie NameTag și mock ExtendScript raportate PASS în procesul de construire; aceste rezultate nu validează ochiul editorial ori renderele Premiere.
