@@ -99,7 +99,6 @@ def _name_blocks(segments,markers):
         prior_identity=identity;prior_marker=marker
         yield seg,card,block_number
 
-
 def build(docx:Path, module:str, separator:float=SEPARATOR):
     docx=Path(docx).resolve()
     if not docx.is_file() or docx.suffix.lower()!='.docx':raise ValueError('DOCX invalid / fișier lipsă')
