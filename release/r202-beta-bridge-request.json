@@ -1,0 +1,6 @@
+{
+  "version": "2.0.2",
+  "source_sha": "877e4c42c09b3aa0cca71d3bda26ff1b7850cc08",
+  "requires_installed": "2.0.0",
+  "purpose": "Beta opt-in updater plus NameTag fix; Premiere test only"
+}
