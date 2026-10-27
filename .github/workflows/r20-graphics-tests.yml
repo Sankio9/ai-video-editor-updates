@@ -16,4 +16,6 @@ jobs:
         with:
           node-version: '20'
       - name: Guard safety tests
-        run: node experimental/r20/tests/guard.test.js
+        run: |
+          node experimental/r20/tests/guard.test.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
