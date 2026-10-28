@@ -49,3 +49,35 @@ P0: parser diagnostic + planul `CONFIRMED/PLACEHOLDER`, estimări + UI rezumat/a
 P1: writer pe copie secvență V1/A1 + sequence markers, readback, rollback.
 P2: action `Rezolvă CUT`, re-ASR selectiv R2.0.6, fixarea slotului fără ripple.
 P3: comparație cu editările editorului pentru „Învață din corecturile mele”, numai după aprobare.
+
+
+## R2.2 — notificare obligatorie despre fișiere și CUT-uri neintroduse (cerință utilizator, 28.10.2026)
+
+**Regulă P0: nu lăsa editorul să caute singur ce lipsește.** R2.2 păstrează **un singur** buton principal `Montează după scenariu`. În urma analizei, dacă există măcar un CUT care nu poate fi inserat sigur, afișează obligatoriu un raport contextual **înainte** de alegerea `Continuă cu spații rezervate` / `Oprește`; după montajul parțial afișează o notificare persistentă în **01 Montaj**, până când lipsurile sunt rezolvate sau editorul închide explicit raportul. Nu ascunde erorile în consola tehnică și nu deschide câte o fereastră pop-up pentru fiecare CUT.
+
+### Ce trebuie să vadă editorul
+
+**Rezumat:** `Montaj parțial — 9/19 sincronuri inserate, 10 spații rezervate. Verifică materialele marcate.` Aceste numere sunt doar un EXEMPLU de fixture Bubuieci, nu valori hardcodate. Distinge între `ANALIZĂ` (înainte de scriere) și `REZULTAT CONFIRMAT` (doar după Premiere readback real). Nu declara `inserat` înainte de readback.
+
+**Listă extensibilă „Materiale care necesită intervenția ta”**, în ordinea DOCX; fiecare rând conține:
+- `CUT-ID` + **cod sursă 4 cifre** + numele real al fișierului dacă a fost detectat în Project Panel (altfel `Fișier negăsit în Project Panel`), fără a inventa nume;
+- **motiv distinct**, unul dintre `SOURCE_NOT_FOUND`, `SOURCE_OFFLINE`, `SOURCE_AMBIGUOUS`, `AUDIO_NOT_FOUND`, `ASR_WEAK_BOUNDARY`, `ASR_WEAK_TRANSCRIPT`, `TC_INCOMPLETE_OR_IMPLAUSIBLE`, `OTHER_REVIEW`, `INSERTION_FAILED`. Nu prezenta `AUDIO_NOT_FOUND` drept `FILE_MISSING`; fișierul poate exista dar sincronul să nu fie identificabil în audio;
+- **acțiunea necesară**, explicată simplu (reconectează media / verifică declarația manual / verifică timecode / alege sursa corectă / reîncearcă ASR);
+- poziția `timelineStart` și intervalul estimat rezervat, afișate ca timp Premiere după ce planul este validat; **durată estimată** trebuie etichetată explicit. Pre-insert poate avea doar timp planificat, nu timp verificat;
+- starea `REZERVAT`, `REZOLVAT` sau `BLOCAT`, actualizată doar după readback/diagnostic valid. Dacă un fișier alimentează mai multe CUT-uri, arată **fiecare CUT separat** și numărul total de fișiere distincte negăsite, pentru a evita confuzia „10 CUT-uri = 10 fișiere”.
+
+**După montaj**, în panou o notificare vizibilă, dar neintruzivă: `Montaj parțial finalizat. Au rămas N sincronuri de verificat — Vezi lista`. Lista se poate deschide oricând după operație; conține link de navigare la **markerul de secvență** pe fiecare rând **numai dacă Premiere API permite saltul sigur** (altfel afișează timecode-ul și marker name pentru navigare manuală). Nu adăuga un alt buton principal pentru montaj.
+
+**Raport local permanent**: `D:\AI-Video-Editor\Temp\Montage\<sequence-id>\missing_sources_report.json` (sau un nume stabil similar), cu identitate seq, DOCX SHA, plan SHA, cod/cut/motiv, nume sursă numai local, durate estimate + metoda estimării, poziție marker, status și timestamps. Scriere atomică, zero upload public, fără transcrieri în raportul de notificare. La repornirea panoului, dacă identitatea secvenței și a planului coincid, recuperare read-only a raportului; dacă nu, afișează `raportul nu mai corespunde secvenței active`, nu reaplica automat nimic.
+
+**Rezolvare în timp**: la validarea/reinserarea unui CUT, marchează `REZOLVAT` numai după Premiere readback. Scade contorul și păstrează istoric; nu șterge slotul ori markerul automat dacă inserarea a eșuat. Permite `Copiază lista` sau `Exportă raport` doar ca acțiune secundară în lista deschisă, nu în bara principală 01.
+
+### Tests P0
+
+- [ ] La 0 CUT-uri nesigure, montaj complet fără dialog/avertizare inutilă; final `19/19` doar după readback.
+- [ ] La 10/19 incerte, dialogul arată **toate cele 10 CUT-uri**, codurile, motivul și estimarea, înainte de aprobare; după readback arată numărul real inserat și rezervat.
+- [ ] CUT-18 și CUT-19 cu aceeași sursă 9974 apar ca **două CUT-uri** cu **un singur fișier distinct** (dacă acesta există); statutul este `AUDIO_NOT_FOUND`, nu `SOURCE_NOT_FOUND`, când fișierul e online dar vorbirea nu e recunoscută.
+- [ ] Media absentă/offline/duplicată nu duce la scriere nesigură; raportul distinge exact condiția.
+- [ ] Listă persistentă după reîncărcarea panelului pentru aceeași secvență; nu se amestecă rapoarte ale secvențelor diferite.
+- [ ] Refuz `Oprește` => zero inserări și zero raport fals de `montaj finalizat`; planul/diagnosticul local poate rămâne read-only.
+- [ ] Nicio valoare privată exportată în GitHub sau telemetrie; fără transcrieri/mesaje sensibile în notificări.
