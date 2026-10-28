@@ -156,3 +156,10 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [ ] Rezultatul de inserare se raportează numai după readback; REFUZUL => zero modificări/zero mesaj de succes.
 - [ ] Navigarea la marker este read-only; raport JSON local atomic, legat de seqId+hash, persistent, fără conținut editorial privat în GitHub.
 - [ ] Fără buton suplimentar de montaj. Unicul `Montează după scenariu` + dialog contextual la probleme; altfel automat.
+
+
+## R2.2 — planner sintetic implementat (28.10.2026)
+- [x] `experimental/r20/r220/tools/r220_montage_plan.py` pe `feature/r20-independent-graphics-gate`, `PLAN ANALYSIS_ONLY`: nu permite modificarea Premiere. CI run `40726539952` SUCCESS, 19 teste sintetice nou-adăugate pentru statusuri, surse, durate, plan hash, decizie explicită, raport lipsuri, readback și confidențialitate; plus regressions R2.1.3/R2.0.8.
+- [x] 19 CUT-uri sintetic -> 9 validate/10 placeholders. Două sincronuri cu sursa 9974 ONLINE sunt `AUDIO_NOT_FOUND`, nu două fișiere distincte pierdute; dacă 9974 MISSING, raportul conține un singur cod de sursă distinct lipsă.
+- [x] `AI_MATCHED` fără validator nu devine clip. Timecode de 1 sec pentru o declarație lungă nu determină tăierea. Plan mutat/sequence ID schimbat/refuz user blochează orice autorizare.
+- [ ] **NU ESTE LIVE**: scanner Project Panel, mapping pe montajul DOCX real, dialogul contextual, slot marker Premiere V1/A1, backup/rollback, citirea după inserare și persistent notification în panou încă neimplementate. Nicio versiune R2.2 Beta de instalat. Stable R1.9.13 păstrată.
