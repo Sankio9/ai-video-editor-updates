@@ -1,0 +1,108 @@
+name: Publish R2.0.7 subtitle strikethrough (BETA only)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r207-subtitle-strike-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: r207-beta-publish
+  cancel-in-progress: false
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard exact release intent, version and Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          j=json.load(open('release/r207-subtitle-strike-request.json'))
+          assert j=={
+            "version":"2.0.7",
+            "source_sha":"743999690855e90ddd20f47f7930c0892c6e536c",
+            "requires_installed":"2.0.5",
+            "purpose":"Opt-in DOCX strikethrough omission for independent subtitles 02, keep 01/03/04/05 untouched"
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          test "$(gh release view v2.0.5 --json isPrerelease --jq .isPrerelease)" = 'true'
+          ! gh release view v2.0.7 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 743999690855e90ddd20f47f7930c0892c6e536c
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install pinned DOCX reader for synthetic tests
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Download exact prior R2.0.4/R2.0.5 Beta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p dist/r204 dist/r205
+          gh release download v2.0.4 -p AIVE_UPDATE.zip --dir dist/r204
+          gh release download v2.0.5 -p AIVE_UPDATE.zip --dir dist/r205
+          python - <<'PY'
+          import hashlib,pathlib
+          known={'r204':'dc5fe714758ec388a18ac317b113452a33a6a65e5ae1101b7cda6c792308be9f',
+                 'r205':'0c2af0a11dea5a2234e840551059d8712da1c4dec1290a22963ca63442561469'}
+          for k,v in known.items():
+              p=pathlib.Path('dist')/k/'AIVE_UPDATE.zip'
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==v
+              print('PASS prior release',k,p.stat().st_size)
+          PY
+      - name: 02 DOCX Word-strike + generator + UI regression suite
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r207/candidate/tools/r20_graphics_plans.py
+          python -m py_compile experimental/r20/r207/tools/r207_docx_strike.py
+          python -m unittest discover -s experimental/r20/r207/tests -p 'test_r207_strike.py' -v
+          python -m unittest discover -s experimental/r20/r207/tests -p 'test_r207_planner.py' -v
+          node --check experimental/r20/r207/candidate/cep/r20_panel.js
+          node experimental/r20/r207/tests/test_r207_ui.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p 'test_r201_nametag.py' -v
+          python -m unittest discover -s tests_r20 -p 'test_r203_review.py' -v
+      - name: Build SHA-256 verified incremental zip
+        run: |
+          python experimental/r20/r207/build_r207.py --r204 dist/r204/AIVE_UPDATE.zip --r205 dist/r205/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import hashlib,json,zipfile
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['version']=='2.0.7' and m['format']==1
+              rows={x['path']:x for x in m['files']}
+              assert set(rows)=={'cep/r20_panel.js','tools/r20_graphics_plans.py','tools/r207_docx_strike.py'}
+              assert rows['tools/r207_docx_strike.py']['before_sha256'] is None
+              assert all(rows[x]['before_sha256'] for x in ('cep/r20_panel.js','tools/r20_graphics_plans.py'))
+              for row in rows.values():
+                  assert hashlib.sha256(z.read('payload/'+row['path'])).hexdigest()==row['sha256']
+          print('R2.0.7 Beta 3 files, 2 pinned base hashes, rollback-ready manifest PASS')
+          PY
+      - name: Publish prerelease ONLY, keep Stable untouched
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.0.7 dist/AIVE_UPDATE.zip \
+            --target 743999690855e90ddd20f47f7930c0892c6e536c \
+            --title 'AI Video Editor R2.0.7 — Word Strikethrough subtitles (BETA)' \
+            --notes 'EXPERIMENTAL Beta, incremental from installed R2.0.5. 02 Independent checkbox (default OFF): omit only Word struck text; italic reporter unchanged; fail-closed on ambiguous formatting, separate SHA-pinned plans. In 02 Synced the checkbox is disabled pending engine integration. No changes to 01 montage, 03 NameTag, 04 cartons, 05 VO HOLD. Premiere LIVE validation still required, not Stable.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
