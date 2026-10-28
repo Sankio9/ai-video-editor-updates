@@ -1,0 +1,6 @@
+{
+  "version": "2.2.1",
+  "source_sha": "5ebb5b80d108546241b550e278874f8699ddbb51",
+  "requires_installed": "2.2.0",
+  "purpose": "Fix Beta Windows UnicodeEncodeError: ASCII JSON and UTF-8 Python child process, two updater files only"
+}
