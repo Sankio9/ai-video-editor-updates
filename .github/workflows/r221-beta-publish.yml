@@ -1,0 +1,88 @@
+name: Publish R2.2.1 Beta updater encoding hotfix (no Montage changes)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r221-encoding-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r221-beta
+  cancel-in-progress: false
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify intentional release request and protect Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          expected={"version":"2.2.1","source_sha":"5ebb5b80d108546241b550e278874f8699ddbb51","requires_installed":"2.2.0",
+             "purpose":"Fix Beta Windows UnicodeEncodeError: ASCII JSON and UTF-8 Python child process, two updater files only"}
+          assert json.load(open('release/r221-encoding-request.json'))==expected
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          test "$(gh release view v2.2.0 --json isPrerelease --jq .isPrerelease)" = 'true'
+          ! gh release view v2.2.1 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 5ebb5b80d108546241b550e278874f8699ddbb51
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download published Beta and immutable original Beta updater
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/r221 /tmp/r220 dist
+          gh release download v2.0.2 -p AIVE_UPDATE.zip --dir /tmp/r221
+          gh release download v2.2.0 -p AIVE_UPDATE.zip --dir /tmp/r220
+          python experimental/r20/r221/build_r221.py --previous /tmp/r220/AIVE_UPDATE.zip --baseline /tmp/r221/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+      - name: Test Windows cp1252 UnicodeEncodeError is fixed for both error and success
+        run: |
+          python -m unittest discover -s experimental/r20/r221/tests -p test_r221_encoding.py -v
+      - name: Verify exactly 2 non-montage files, pinned SHA and syntax
+        run: |
+          python - <<'PY'
+          import zipfile,json,hashlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              meta=json.loads(z.read('manifest.json'))
+              assert meta['version']=='2.2.1' and meta['format']==1
+              rows={r['path']:r for r in meta['files']}
+              assert set(rows)=={'updater/beta.py','cep/aive_updater_beta.js'}
+              assert rows['updater/beta.py']['before_sha256']=='1724ebad22568dd0ad018a3a226ea4360ac2e403ef6c6352169c84bac84a5a8d'
+              assert rows['cep/aive_updater_beta.js']['before_sha256']=='dc2ec23af66dd3195755a70f0c9b14a54dbf14b1b881848c2526a4dcbbb33eb1'
+              for path,row in rows.items():
+                  assert hashlib.sha256(z.read('payload/'+path)).hexdigest()==row['sha256']
+              js=z.read('payload/cep/aive_updater_beta.js')
+              assert b"PYTHONIOENCODING:'utf-8'" in js and b"PYTHONUTF8:'1'" in js
+              open('/tmp/aive-r221-beta.js','wb').write(js)
+              py=z.read('payload/updater/beta.py').decode('utf8')
+              assert py.count('ensure_ascii=True')==2 and 'ensure_ascii=False' not in py
+          print('PASS: 2-file only Beta updater fix, exact source SHA, Montage and stable untouched')
+          PY
+          node --check /tmp/aive-r221-beta.js
+      - name: Release only Beta, no Stable promotion
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.2.1 dist/AIVE_UPDATE.zip \
+            --target 5ebb5b80d108546241b550e278874f8699ddbb51 \
+            --title 'AI Video Editor R2.2.1 - Beta updater Windows UTF-8 fix (BETA)' \
+            --notes 'BETA incremental from installed v2.2.0. Fixes Windows UnicodeEncodeError (cp1252/charmap) in Beta check by making Python JSON stdout ASCII-safe and launching its subprocess with PYTHONIOENCODING=utf-8/PYTHONUTF8=1. Only updater/beta.py and cep/aive_updater_beta.js are modified. Exact before SHA256 and byte-safe rollback are included. Montaj R2.2.0, subtitles, NameTag, captions, and Stable v1.9.13 are untouched. The first bootstrap from an older broken Beta updater may require a one-time Windows UTF-8 environment setting, after which subsequent updates are automatic. Synthetic CI test covers cp1252 failure and success. Adobe Premiere LIVE validation is pending.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
