@@ -158,7 +158,7 @@ function commit(state,choice,media){
 }
 function offer(state,media){
  var r=state.lock.report,p=state.lock.plan;
- if(!r.items.length){commit(state,'COMPLETE_AFTER_PREFLIGHT',media);return;}
+ if(!r.items.length){exit();commit(state,'COMPLETE_AFTER_PREFLIGHT',media);return;}
  list(r);
  var controls=document.createElement('div');controls.style.cssText='display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;';
  var yes=textBlock('button','Continuă cu spații rezervate');yes.className='secondary';
