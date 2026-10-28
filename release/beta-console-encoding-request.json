@@ -1,0 +1,6 @@
+{
+  "operation": "ascii_safe_beta_release_metadata",
+  "latest_beta": "v2.2.0",
+  "asset_digest": "sha256:2dec078fa67cd75de67a24090d20258720cd8b88a48672d4eebbfae64002b00c",
+  "reason": "Windows cp1252 UnicodeEncodeError in Beta updater check"
+}
