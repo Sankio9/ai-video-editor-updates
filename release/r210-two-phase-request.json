@@ -1,0 +1,6 @@
+{
+  "version": "2.1.0",
+  "source_sha": "c576a6f78d7a1847708700468dd8b93419a8e7a1",
+  "requires_installed": "2.0.9",
+  "purpose": "Analyze DOCX, preview before/after, check checkbox and engine/plan SHA before inserting V3"
+}
