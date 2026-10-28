@@ -1,0 +1,96 @@
+name: Publish R2.1.2 balanced subtitles (BETA only)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r212-caption-balance-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r212-beta
+  cancel-in-progress: false
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact user-requested patch, stable and baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          expected={'version':'2.1.2','source_sha':'a600484882ad1b505ce0c0c59a32f1c806552e4e','requires_installed':'2.1.1',
+          'purpose':'Balance subtitle leftovers by semantic sentence boundaries without changing text or one-click UI'}
+          assert json.load(open('release/r212-caption-balance-request.json'))==expected
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          test "$(gh release view v2.1.1 --json isPrerelease --jq .isPrerelease)" = 'true'
+          ! gh release view v2.1.2 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: a600484882ad1b505ce0c0c59a32f1c806552e4e
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Word synthetic test dependency
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Balanced captions/Word-strike integration
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r212/candidate/tools/r20_graphics_plans.py
+          python -m unittest discover -s experimental/r20/r212/tests -p test_r212_balance.py -v
+          python -m unittest discover -s experimental/r20/r209/tests -p test_r209_strike_ooxml.py -v
+      - name: One-click UI and MOGRT regression gates
+        run: |
+          set -eu
+          node --check experimental/r20/r211/candidate/cep/r20_panel.js
+          node experimental/r20/r211/tests/test_r211_ui.js
+          node experimental/r20/r211/tests/test_r211_full_flow.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+      - name: Preserve NameTag identity checks
+        run: |
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p test_r201_nametag.py -v
+          python -m unittest discover -s tests_r20 -p test_r203_review.py -v
+      - name: Verify released v2.1.1 SHA-256 and build single-file delta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p dist/prior
+          gh release download v2.1.1 -p AIVE_UPDATE.zip --dir dist/prior
+          python experimental/r20/r212/build_r212.py --prior dist/prior/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,json,hashlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['format']==1 and m['version']=='2.1.2'
+              assert len(m['files'])==1
+              x=m['files'][0]
+              assert x['path']=='tools/r20_graphics_plans.py'
+              assert len(x['before_sha256'])==64
+              assert hashlib.sha256(z.read('payload/'+x['path'])).hexdigest()==x['sha256']
+          print('PASS: single-file 2.1.2 delta with before_sha256 and installer rollback base')
+          PY
+      - name: Publish prerelease only, preserve Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.1.2 dist/AIVE_UPDATE.zip \
+            --target a600484882ad1b505ce0c0c59a32f1c806552e4e \
+            --title 'AI Video Editor R2.1.2 — Subtitrări echilibrate (BETA)' \
+            --notes 'BETA incremental from installed v2.1.1, one-file update tools/r20_graphics_plans.py only. Subtitle captions keep <=74 chars, exact Word text and Strikethrough policy. Rebalances 70/15 into approximately 41/34, prioritizes sentence punctuation, avoids orphan endings such as Să, keeps standalone short sentences intact. No changes to one-click UI, Premiere MOGRT executor, 01, 03, 04 or VO 05 HOLD. Mock/CI tested; Premiere LIVE validation pending, Stable v1.9.13 unchanged.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
