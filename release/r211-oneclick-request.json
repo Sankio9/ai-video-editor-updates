@@ -1,0 +1,6 @@
+{
+  "version": "2.1.1",
+  "source_sha": "8b14045f38d8afc82a87fef2224c7f528d80360d",
+  "requires_installed": "2.1.0",
+  "purpose": "One-click subtitles with internal mandatory DOCX preflight, sentence-aware 74-char wrapping"
+}
