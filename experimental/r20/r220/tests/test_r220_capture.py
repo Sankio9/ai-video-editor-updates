@@ -5,6 +5,9 @@ ROOT=Path(__file__).resolve().parents[1]/"tools"
 sys.path.insert(0,str(ROOT))
 sys.path.insert(0,str(Path(__file__).resolve().parents[4]/"scripts"))
 from r220_capture import capture,R220Captured
+import types
+sys.modules["r1911_speech_first"]=types.SimpleNamespace(
+    MIN_BOUNDARY_SCORE=.67,MIN_FULL_TEXT_SCORE=.67)
 
 def make_plan(matched=True,with_voice=True):
     good={"status":"AI_MATCHED","source":"9981","startScore":.92,
