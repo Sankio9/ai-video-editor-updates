@@ -42,7 +42,7 @@ def build(previous,baseline,output):
     js=original["cep/aive_updater_beta.js"].decode("utf8")
     js=replace_once(js,
       "var ps=cp.spawn(python,args,{cwd:root,windowsHide:true}),stdout='',stderr='',done=false;",
-      "var betaEnv=Object.assign({},process.env,{PYTHONIOENCODING:'utf-8',PYTHONUTF8:'1'});\\n"+
+      "var betaEnv=Object.assign({},process.env,{PYTHONIOENCODING:'utf-8',PYTHONUTF8:'1'});\n"+
       "   var ps=cp.spawn(python,args,{cwd:root,windowsHide:true,env:betaEnv}),stdout='',stderr='',done=false;")
     # Validity: after a forced cp1252 error the CLI must always emit
     # ASCII-escaped JSON that can be parsed by CEP, NEVER a traceback.
