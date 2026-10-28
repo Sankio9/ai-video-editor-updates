@@ -22,6 +22,7 @@ jobs:
         run: |
           python -m py_compile experimental/r20/r209/candidate/tools/r207_docx_strike.py
           python -m unittest discover -s experimental/r20/r209/tests -p 'test_r209_strike_ooxml.py' -v
+          python -m unittest discover -s experimental/r20/r209/tests -p 'test_r209_planner.py' -v
       - name: Prior Beta module 02/03/04 source remains unchanged
         run: |
           python - <<'PY'
