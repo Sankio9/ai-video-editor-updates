@@ -1,0 +1,46 @@
+name: AIVE updater R1.8.9 historical source audit
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/aive-updater-r188-audit.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read published updater patch sources without user data
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/assets
+          for tag in v1.8.9 v1.9.3 v2.0.2 v2.2.0; do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              mkdir -p "/tmp/assets/$tag"
+              gh release download "$tag" -p AIVE_UPDATE.zip --dir "/tmp/assets/$tag" || true
+            fi
+          done
+          python - <<'PY'
+          import pathlib,zipfile,json,hashlib
+          for zpath in sorted(pathlib.Path('/tmp/assets').glob('*/AIVE_UPDATE.zip')):
+            try:
+              with zipfile.ZipFile(zpath) as z:
+                m=json.loads(z.read('manifest.json'))
+                print('VERSION',zpath.parent.name,'FILES',len(m['files']))
+                for row in m['files']:
+                  name=row['path']
+                  if 'updat' not in name.lower() and 'channel' not in name.lower(): continue
+                  print('UPDATER',name,'SHA',row['sha256'],'BEFORE',row.get('before_sha256'))
+                  if name.endswith(('.js','.py')):
+                    txt=z.read('payload/'+name).decode('utf8')
+                    for i,line in enumerate(txt.splitlines(),1):
+                      if ('spawn(' in line or 'JSON.stringify' in line or 'PYTHONIOENCODING' in line or
+                         'python.exe' in line or 'Răspuns' in line or 'response' in line or
+                         'var py' in line):
+                        print('SOURCE',i,line[:200].encode('ascii','backslashreplace').decode('ascii'))
+            except Exception as e:print('READ_FAILED',zpath.parent.name,str(e))
+          PY
