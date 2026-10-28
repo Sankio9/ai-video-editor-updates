@@ -96,3 +96,11 @@ Categoriile trebuie să aibă selector de mod inteligibil; **nu se schimbă auto
 - Folosește exclusiv secvențe **literale**, contigue din DOCX; nicio reformulare, nicio invenție. Subtilitatea semantică este evaluată distinct de succesul tehnic Orange/Bold; preferă puține accente precise.
 - Nu sacrifica compactarea în două rânduri doar ca să păstrezi un concept pe un singur rând; fiecare token evidențiat trebuie asociat corect poziției lui MOGRT chiar dacă expresia traversează o delimitare vizuală.
 - Următoarele optimizări sunt în stadiu **cerință / candidat**, nu deja instalate în R2.0.4.
+
+
+## R2.0.7 — regim Strikethrough în subtitrări (cerință aprobată 28.10.2026)
+- Modulul **02 Subtitrări** are bifă suplimentară, **implicit DEZACTIVATĂ**: `Omite textul tăiat (Strikethrough) din DOCX`. Activată: în fiecare CUT se ignoră **doar caracterele marcate Word Strikethrough / Double Strikethrough**; textul italic, bold, underline și normal rămâne, în ordine. Nu elimina automat text italic reporter ca și cum ar fi tăiat. DOCX original este read-only.
+- Implementarea trebuie să lege textul CUT de caracterele formatate din **paragraful/range-ul exact al sursei DOCX**; dacă textul parserului nu se poate alinia unic la Word, STOP înainte de inserarea pe V3. Nu ghici bazat pe aparență/poziții și nu reformula. Când un CUT este complet tăiat, omite doar acel CUT și raportează `CUT-xx`. Dacă nu mai rămân subtitrări, STOP.
+- Politica `INCLUDE_STRUCK` vs `OMIT_STRUCK` face parte din hash/identitatea planului și trebuie verificată între DOCX → generator → CEP → Premiere. Schimbarea bifei în timpul generării/inserării invalidează planul și declanșează oprire/rollback (fără suprascriere). Numără caractere/CUT-uri omise fără a afișa text privat în raport.
+- **Ambele moduri** 02 trebuie să respecte opțiunea înainte de Stable. Candidatul R2.0.7 implementează deocamdată numai modul Independent; în Synced checkbox-ul este indisponibil până la integrarea în motorul legacy, pentru a nu crea impresia falsă că funcționează. Nu publica Stable cu bifa falsă în Synced.
+- 01 Montaj rămâne speech-first ASR, cu zero fallback brut la TC. **Nu transforma automat textul tăiat din DOCX în sincron de montaj eliminat** fără o politică editorială aprobată separat: opțiunea de aici este cerută explicit pentru Subtitrări 02.
