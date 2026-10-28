@@ -124,3 +124,11 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [ ] **LIVE P0 inserare:** doar după preview aprobat, `2 · Inserează subtitrările verificate pe V3`; textul MOGRT exact ca `DUPĂ`, `READBACK` verificabil, piste V1/A1/V4/V5 nemodificate și preflight V3 ocupată.
 - [ ] **LIVE P0 installer:** confirmă din panou că motorul/CEP sunt ambele R2.1.0, inclusiv în ambele rădăcini CEP; hash-mismatch nu permite generare. Înapoi la R2.0.9 cu rollback byte-exact.
 - [ ] Dacă DOCX real nu se poate analiza, cere **originalul DOCX în acest chat** pentru inspectarea w:strike/w:dstrike/Track Changes; screenshot nu dovedește structura internă. CI nu poate substitui acest test.
+
+
+## R2.1.1 — Subtitle UX polish și reguli de împărțire (Beta 2026-10-28)
+- [x] **Utilizator R2.1.0:** filtrarea Strikethrough a funcționat efectiv (confirmare din utilizator). Screenshotul nou arată o subtitrare care termină cu `Să` după `...planul de admitere.`, caz vizual neplăcut.
+- [x] **CI synthetic PASS**: branch `feature/r20-independent-graphics-gate`, test `40652478230` după corecția pragului de despărțire: DOCX parser/strike, 74 caractere, întreaga frază restaurată identic, început de propoziție la următorul MOGRT, ~200 intrări sintetice repetitive, panou cu un singur buton și mock Premiere care dovedește nicio comandă înainte de analiza Word, STOP zero-omision, STOP motor vechi, STOP document/bifă schimbată.
+- [x] **Beta v2.1.1 PUBLICATĂ:** https://github.com/Sankio9/ai-video-editor-updates/releases/tag/v2.1.1, ZIP 14117 octeți, SHA-256 `f0a088d7954b09664706e66eb10abb9cf17fa3726eef52fe5639d7ce486b0a12`; upgrade strict v2.1.0 → v2.1.1 prin updater Beta, delta 2 fișiere `cep/r20_panel.js` + `tools/r20_graphics_plans.py`, ambele cu `before_sha256`. CI publicare `40652619521` PASS; stable R1.9.13 neafectată.
+- [ ] **LIVE Premiere:** pe COPIE secvență cu V3 goală, după update R2.1.1, 02 Independent afișează un singur buton `Inserează subtitrările` și bifa; la ON rezultatul nu include text Word tăiat, iar fraza `Să informăm tinerii că...` începe o subtitrare nouă, nu încheie subtitrarea precedentă cu `Să`.
+- [ ] **LIVE safety:** schimbarea bifei/DOCX în timpul procesului, V3 ocupată, rollback, durate, readback conținut pentru toate cues și lipsa modificărilor V1/A1/V4/V5. Mock CI PASS nu substituie acest test.
