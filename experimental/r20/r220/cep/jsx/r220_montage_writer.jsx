@@ -20,8 +20,8 @@ var AIVE_R220 = (function(){
   }
   function scan(item,found){
     if(!item)return;
-    if(item.type===2 || item.type==="Bin"){
-      var children=item.children||[];
+    if(item.children && typeof item.children.numItems==="number"){
+      var children=item.children;
       for(var i=0;i<children.numItems;i++)scan(children[i],found);
       return;
     }
@@ -55,7 +55,7 @@ var AIVE_R220 = (function(){
       seen[c.cutId]=1;
       if(!number(c.timelineStart)||!number(c.timelineEnd)||
          !number(c.durationSeconds)||c.timelineEnd<=c.timelineStart||
-         c.durationSeconds<=0||!close(c.timelineStart,previous) ||
+         c.durationSeconds<=0||c.timelineStart<previous-0.08 ||
          !close(c.timelineEnd-c.timelineStart,c.durationSeconds))
           fail("TIMELINE_RANGE_INVALID "+c.cutId);
       previous=c.timelineEnd;
@@ -84,7 +84,7 @@ var AIVE_R220 = (function(){
     return {ok:true,phase:"PREFLIGHT_ONLY",sequenceId:identity(s),
             totalCuts:plan.totalCuts,confirmed:plan.confirmedCount,
             placeholders:plan.placeholderCount,planSHA256:plan.planSHA256,
-            targetCount:Object.keys?Object.keys(selected).length:plan.confirmedCount};
+            targetCount:plan.confirmedCount};
   }
   function findClip(track,start,name){
     var matches=[];
@@ -102,7 +102,7 @@ var AIVE_R220 = (function(){
       else item.clearOutPoint();
     }catch(e){fail("SOURCE_IN_OUT_RESTORE_FAILED "+String(e));}
   }
-  function insert(s,item,c){
+  function insert(s,item,c,added){
     // Source In/Out is modified temporarily; restore it in all paths.
     var previousIn=item.getInPoint(),previousOut=item.getOutPoint();
     var oldIn=previousIn&&number(previousIn.seconds)?previousIn.seconds:null;
@@ -112,17 +112,20 @@ var AIVE_R220 = (function(){
       if(item.setOutPoint(c.sourceOut,4)!==0)fail("SET_OUT_FAILED "+c.cutId);
       if(s.overwriteClip(item,c.timelineStart,0,0)!==true)
          fail("OVERWRITE_FAILED "+c.cutId);
+      // Capture inserted objects before any readback/restore failure.
+      var v=findClip(s.videoTracks[0],c.timelineStart,c.sourceName);
+      var a=findClip(s.audioTracks[0],c.timelineStart,c.sourceName);
+      if(v||a)added.push({video:v,audio:a,cutId:c.cutId});
+      if(!v||!a||!close(v.end.seconds,c.timelineEnd)||
+         !close(a.end.seconds,c.timelineEnd))fail("CLIP_READBACK_FAIL "+c.cutId);
     }finally{restoreItem(item,oldIn,oldOut);}
-    var v=findClip(s.videoTracks[0],c.timelineStart,c.sourceName);
-    var a=findClip(s.audioTracks[0],c.timelineStart,c.sourceName);
-    if(!v||!a||!close(v.end.seconds,c.timelineEnd)||
-       !close(a.end.seconds,c.timelineEnd))fail("CLIP_READBACK_FAIL "+c.cutId);
-    return {video:v,audio:a,cutId:c.cutId};
+    return true;
   }
-  function marker(s,c){
+  function marker(s,c,markers){
     if(!s.markers)fail("MARKERS_NOT_SUPPORTED");
     var created=s.markers.createMarker(c.timelineStart);
     if(!created)fail("MARKER_CREATE_FAILED "+c.cutId);
+    markers.push(created);
     created.name="AIVE-R220 "+c.cutId+" "+c.sourceCode;
     created.comments="AUDIO NECONFIRMAT | "+c.reason+" | DURATA ESTIMATA "+c.durationSeconds+"s";
     created.end=c.timelineEnd; // documented marker.end: assign seconds, not Time object
@@ -154,10 +157,10 @@ var AIVE_R220 = (function(){
         if(identity(seq())!==verified.sequenceId)fail("SEQUENCE_SWITCHED_DURING_INSERT");
         var row=plan.cuts[i];
         if(row.state==="CONFIRMED"){
-          var item=insert(s,sources[row.cutId],row);added.push(item);
+          insert(s,sources[row.cutId],row,added);
           resultIds.push(row.cutId);
         }else{
-          var m=marker(s,row);markers.push(m);markerIds.push(row.cutId);
+          marker(s,row,markers);markerIds.push(row.cutId);
         }
       }
       if(s.videoTracks[0].clips.numItems!==plan.confirmedCount||
