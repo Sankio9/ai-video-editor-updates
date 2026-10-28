@@ -147,3 +147,12 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] **BETA publicată** https://github.com/Sankio9/ai-video-editor-updates/releases/tag/v2.1.3; ZIP SHA256 `5cb8fd4e65ecc77d148aa78a5c98eaff5cf13c1977ed84537f52f5991d257ffd`, 8027 bytes, doar două fișiere `tools/r193_pipeline.py` + `tools/r213_second_pass.py`. Delta strictă de la R2.1.2 Beta, Stable R1.9.13 nemodificată. CI publish https://github.com/Sankio9/ai-video-editor-updates/actions/runs/40667140553 SUCCESS.
 - [ ] **LIVE Bubuieci:** utilizatorul actualizează prin Beta updater la v2.1.3, pe o COPIE a secvenței, apasă `Montează după scenariu` și verifică numărul de CUT-uri ACCEPT/REVIEW; urmărește V1/A1. Dacă 8/17 rămâne ori scade incomplet, cere diagnosticul NOU `D:\AI-Video-Editor\Temp\R193\last_match_diagnostic.json`, nu documentul vechi cu 19 CUT-uri. Nu promova Stable fără rezultate reale.
 - [ ] **P0 selector audio real:** R2.1.3 reanalizează cuvintele ASR deja transcrise, **nu retranscrie local audio din nou**. Pentru audio lipsă/transcris slab, trebuie integrat laboratorul R2.0.6 cu preflight surse și ferestre, re-ASR pe RTX3070, validare dialog unic și limite IN/OUT înainte de plan.
+
+
+## R2.2 — avertizare/editorial missing clips (cerință pentru Beta)
+- [ ] Când un script are 19 CUT-uri, 9 validate și 10 review, analiza arată lista completă de 10 înainte de aprobare, fără a scrie timeline-ul.
+- [ ] După continuarea aprobată și readback, panoul 01 afișează `Montaj parțial: 10 sincronuri de verificat`, cu listă disponibilă după închiderea dialogului și reîncărcarea extensiei.
+- [ ] Fiecare rând: `CUT / cod sursă / nume fișier dacă disponibil / motiv exact / poziție și durată estimată / status`. Distingem media absentă de ASR eşuat şi de timecode incert; două CUT-uri din același fișier nu sunt prezentate ca două fișiere distincte lipsă.
+- [ ] Rezultatul de inserare se raportează numai după readback; REFUZUL => zero modificări/zero mesaj de succes.
+- [ ] Navigarea la marker este read-only; raport JSON local atomic, legat de seqId+hash, persistent, fără conținut editorial privat în GitHub.
+- [ ] Fără buton suplimentar de montaj. Unicul `Montează după scenariu` + dialog contextual la probleme; altfel automat.
