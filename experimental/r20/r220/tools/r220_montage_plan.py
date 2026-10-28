@@ -101,12 +101,23 @@ def build(diagnostic,context,inventory,validated_cuts):
         node_id=media.get("nodeId")
         if state=="ONLINE" and (not isinstance(node_id,str) or not node_id.strip()):
             raise ValueError("Online source has no verified Project Panel nodeId")
-        # Real R1.9.13 exports "asr.status"; older diagnostic fixtures
-        # used "matchStatus". Both must agree if both are supplied.
-        if a.get("status") is not None and a.get("matchStatus") is not None and a["status"]!=a["matchStatus"]:
-            raise ValueError("CONTRADICTORY_ASR_STATUS_STOP")
-        status=a.get("status") or a.get("matchStatus")
-        if status not in set(REASONS)|{"AI_MATCHED"}:raise ValueError("UNKNOWN_MATCH_STATUS_STOP")
+        # R1.9.13 uses asr.status=AI_MATCHED or FALLBACK_SCRIPT_TC,
+        # while matchStatus may say REVIEW_SUGGESTED even for safe audio.
+        # NEVER treat a FALLBACK_SCRIPT_TC as validated source IN/OUT.
+        raw=a.get("status")
+        hint=a.get("matchStatus")
+        if raw=="AI_MATCHED":
+            status="AI_MATCHED"
+        elif raw in ("FALLBACK_SCRIPT_TC","REVIEW"):
+            status=hint if hint in REASONS else "REVIEW_INVALID_BOUNDS"
+        elif raw in REASONS:
+            status=raw
+        elif raw is None:
+            status=hint
+        else:
+            raise ValueError("UNKNOWN_MATCH_STATUS_STOP")
+        if status not in set(REASONS)|{"AI_MATCHED"}:
+            raise ValueError("UNKNOWN_MATCH_STATUS_STOP")
         is_valid=status=="AI_MATCHED" and cut in verified and state=="ONLINE"
         if is_valid:
             start,end,source_len=a.get("finalIn"),a.get("finalOut"),a.get("sourceDuration")
