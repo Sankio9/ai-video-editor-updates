@@ -153,3 +153,9 @@ Categoriile trebuie să aibă selector de mod inteligibil; **nu se schimbă auto
 - Diagnostic GitHub CI `40733313033` a confirmat că metadatele mai multor prerelease-uri (inclusiv v2.1.2 / v2.1.1) includeau `ă` U+0103 și v2.2.0 includea `ț` U+021B, neencodabile în cp1252.
 - Remediu server-side CI `40733478710` SUCCESS: normalizare titluri și note ale prerelease-urilor GitHub la ASCII, fără a schimba ZIP-urile sau tag-urile, ZIP v2.2.0 SHA256 `2dec078fa67cd75de67a24090d20258720cd8b88a48672d4eebbfae64002b00c` **identic**; Stable R1.9.13 rămâne neatins. API releases încă ordonează v2.2.0 primul.
 - Remediu structural obligatoriu pentru următoarea versiune: process spawn Python din CEP Beta updater trebuie să seteze `PYTHONUTF8=1` și `PYTHONIOENCODING=utf-8`, iar Python trebuie să folosească `sys.stdout.reconfigure(encoding='utf-8',errors='backslashreplace')` sau `json.dumps(...,ensure_ascii=True)`. Metadatele trebuie să fie independente de codepage. Nu există încă LIVE confirmation că retry-ul instalării reușește; nu pretinde asta până la captura din Premiere.
+
+
+## REGULĂ UPDATER R2.2.1 — ieșire ASCII-safe / UTF-8 Windows (28.10.2026)
+- Cod Python care scrie JSON pe stdout pentru CEP trebuie să folosească `json.dumps(...,ensure_ascii=True)` pentru rezultate ȘI erori, indiferent de locale; altfel `UnicodeEncodeError` ascunde eroarea reală și cade `Răspuns Beta invalid`.
+- Toate subprocess-urile Python pornite din CEP trebuie să seteze **explicit** `env:Object.assign({},process.env,{PYTHONIOENCODING:'utf-8',PYTHONUTF8:'1'})` sau echivalent verificat, fără să schimbe sistemul în întregime. Erorile locale trebuie raportate prin JSON parsabil, nu prin traceback stderr incomplet.
+- Remediul permanent a fost publicat ca v2.2.1 Beta https://github.com/Sankio9/ai-video-editor-updates/releases/tag/v2.2.1 (doar două fișiere, SHA exact, rollback), după test CI `40734874138`. Următorul release rămâne Beta până la confirmarea LIVE în Premiere.
