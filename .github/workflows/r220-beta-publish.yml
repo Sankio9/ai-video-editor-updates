@@ -1,0 +1,110 @@
+name: R2.2.0 Montage one-click testable Beta (Stable unchanged)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r220-testable-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r220-testable-beta
+  cancel-in-progress: false
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact candidate request and protect published Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          expected={"version":"2.2.0","source_sha":"f421dbd1475037f61aa731974d337720f4b94594","requires_installed":"2.1.3",
+                    "purpose":"One-click Montage 01, R143 read-only ASR capture, contextual partial approval, test-copy V1/A1 inserts and missing report"}
+          assert json.load(open('release/r220-testable-request.json'))==expected
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          test "$(gh release view v2.1.3 --json isPrerelease --jq .isPrerelease)" = "true"
+          ! gh release view v2.2.0 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: f421dbd1475037f61aa731974d337720f4b94594
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Compile and test original-docx capture and full safe R2.2 planner
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r220/tools/*.py
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_montage_plan.py -v
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_capture.py -v
+          python -m unittest discover -s experimental/r20/r213/tests -p test_r213_second_pass.py -v
+          python -m unittest discover -s experimental/r20/r208/tests -p test_r208_montage_8_of_17.py -v
+      - name: Validate real CEP and Premiere JSX syntax, guard and rollback mocks
+        run: |
+          set -eu
+          node --check experimental/r20/r220/cep/r220_montage_panel.js
+          node --check < experimental/r20/r220/cep/jsx/r220_media_probe.jsx
+          node --check < experimental/r20/r220/cep/jsx/r220_montage_writer.jsx
+          node experimental/r20/r220/tests/test_r220_writer.js
+      - name: Download exact published prior releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p dist/prior dist/oldworkflow
+          gh release download v2.1.3 -p AIVE_UPDATE.zip --dir dist/prior
+          gh release download v1.9.10 -p AIVE_UPDATE.zip --dir dist/oldworkflow
+      - name: Pack SHA guarded exactly seven-file delta, preserve non-montage modules
+        run: |
+          set -eu
+          python experimental/r20/r220/build_r220.py --prior dist/prior/AIVE_UPDATE.zip --workflow dist/oldworkflow/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,json,hashlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.2.0' and m['format']==1
+            rows={x['path']:x for x in m['files']}
+            assert len(rows)==7
+            assert set(rows)=={
+             'tools/r193_pipeline.py','cep/r193_workflow.js',
+             'tools/r220_montage_plan.py','tools/r220_capture.py',
+             'tools/r220_montage_runner.py',
+             'cep/jsx/r220_montage_writer.jsx','cep/jsx/r220_media_probe.jsx'}
+            assert rows['cep/r193_workflow.js']['before_sha256']=='fcafbea9854bc7176b68342473d9b27f362a8cfc6e3334063532c1b16df81dd9'
+            assert len(rows['tools/r193_pipeline.py']['before_sha256'])==64
+            assert all(hashlib.sha256(z.read('payload/'+x)).hexdigest()==v['sha256'] for x,v in rows.items())
+            assert all(v['before_sha256'] is None for x,v in rows.items()
+                       if x not in ('cep/r193_workflow.js','tools/r193_pipeline.py'))
+            # No GUI, subtitles, NameTag, Captions, or VO module files in this patch.
+            assert not any(x.startswith(('cep/r20_panel','cep/jsx/r20_graphics','tools/r20_graphics')) for x in rows)
+            panel=z.read('payload/cep/r193_workflow.js').decode('utf8')
+            assert "if(m.key==='cut' && window.AIVE_R220_UI)" in panel
+            assert "m.key==='cut'" in panel and "else run(m)" in panel
+            pipeline=z.read('payload/tools/r193_pipeline.py').decode('utf8')
+            assert "validate_speech_only(plan)" in pipeline
+            assert "r143_build.is_safe=guarded_safe" in pipeline
+            assert "AIVE_R220_CAPTURE" in pipeline
+          print('PASS: Beta exact allowlist, before_SHA, original stable guards and all other modules frozen')
+          PY
+      - name: Publish BETA only, do not update Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.2.0 dist/AIVE_UPDATE.zip \
+            --target f421dbd1475037f61aa731974d337720f4b94594 \
+            --title 'AI Video Editor R2.2.0 — Montaj cu spații rezervate (BETA TEST)' \
+            --notes 'EXPERIMENTAL BETA requiring installed R2.1.3 via in-panel Beta updater. New single Montage 01 button analyzes the full R143 ASR plan first, with original VO editorial intervals reserved. On incomplete ASR, it displays each missing CUT/source/reason/estimated duration and asks Continue with reserved slots / Stop. On all safe cuts, continues without an additional choice. Premiere writes are BLOCKED unless the active sequence is a COPY whose NAME includes [AIVE TEST] and V1/A1 are empty/unlocked. V1/A1 only get speech-confirmed clips; unresolved cuts get timeline interval markers and blank slots; VO stays blank. Reader verifies count and rollback on failure. A persistent local Temp/R220/last_report.json stores missing CUTs. No timecode fallback for source cuts. CI safety mocks PASS, BUT actual Premiere 2025 live integration has NOT been confirmed: THIS IS A TEST BUILD, not Stable. Does not change 02/03/04 or VO HOLD. Use a duplicate/test project and save backup first. If Python returns R220_UNKNOWN_EDITORIAL_EVENT_KIND or Premiere API errors, send Temp/R220/last_error.log and screenshot. Stable R1.9.13 unchanged.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
