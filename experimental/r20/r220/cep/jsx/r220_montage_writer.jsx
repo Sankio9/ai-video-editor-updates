@@ -130,6 +130,7 @@ var AIVE_R220 = (function(){
     created.comments="AUDIO NECONFIRMAT | "+c.reason+" | DURATA ESTIMATA "+c.durationSeconds+"s";
     created.end=c.timelineEnd; // documented marker.end: assign seconds, not Time object
     if(!close(created.start.seconds,c.timelineStart) ||
+       !created.end || !close(created.end.seconds,c.timelineEnd) ||
        String(created.name).indexOf(c.cutId)<0)
        fail("MARKER_READBACK_FAIL "+c.cutId);
     return created;
