@@ -1,0 +1,97 @@
+name: R2.1.0 subtitle two-stage analysis (BETA ONLY)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r210-two-phase-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r210-beta
+  cancel-in-progress: false
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify pinned request, prior Beta and Stable guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          actual=json.load(open('release/r210-two-phase-request.json'))
+          expected={'version':'2.1.0','source_sha':'c576a6f78d7a1847708700468dd8b93419a8e7a1',
+                    'requires_installed':'2.0.9',
+                    'purpose':'Analyze DOCX, preview before/after, check checkbox and engine/plan SHA before inserting V3'}
+          assert actual==expected
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          test "$(gh release view v2.0.9 --json isPrerelease --jq .isPrerelease)" = 'true'
+          ! gh release view v2.1.0 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: c576a6f78d7a1847708700468dd8b93419a8e7a1
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install exact synthetic-test dependencies
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Check OOXML, independent generator and 2-phase real DOM mocks
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r210/candidate/tools/r20_graphics_plans.py experimental/r20/r210/candidate/tools/r207_docx_strike.py
+          python -m unittest discover -s experimental/r20/r209/tests -p test_r209_strike_ooxml.py -v
+          python -m unittest discover -s experimental/r20/r210/tests -p test_r210_preflight.py -v
+          node --check experimental/r20/r210/candidate/cep/r20_panel.js
+          node experimental/r20/r210/tests/test_r210_ui.js
+          node experimental/r20/r210/tests/test_r210_full_flow.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+      - name: Protect NameTag regressions
+        run: |
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p test_r201_nametag.py -v
+          python -m unittest discover -s tests_r20 -p test_r203_review.py -v
+      - name: Verify previous released archives before building delta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p dist/r207 dist/r209
+          gh release download v2.0.7 -p AIVE_UPDATE.zip --dir dist/r207
+          gh release download v2.0.9 -p AIVE_UPDATE.zip --dir dist/r209
+          python experimental/r20/r210/build_r210.py --r207 dist/r207/AIVE_UPDATE.zip --r209 dist/r209/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+      - name: Enforce exact allowlist, hash chaining and no CODE on stable
+        run: |
+          python - <<'PY'
+          import zipfile,json,hashlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['format']==1 and m['version']=='2.1.0' and len(m['files'])==2
+              items={x['path']:x for x in m['files']}
+              assert set(items)=={'cep/r20_panel.js','tools/r20_graphics_plans.py'}
+              assert all(len(x['before_sha256'])==64 for x in items.values())
+              assert all(hashlib.sha256(z.read('payload/'+p)).hexdigest()==x['sha256'] for p,x in items.items())
+          print('PASS: exact 2-file delta, SHA256 and rollback manifest')
+          PY
+      - name: Release prerelease only, never stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.1.0 dist/AIVE_UPDATE.zip \
+            --target c576a6f78d7a1847708700468dd8b93419a8e7a1 \
+            --title 'AI Video Editor R2.1.0 — Analiză DOCX înainte de subtitrări (BETA)' \
+            --notes 'Beta incremental over installed v2.0.9 via in-panel updater only. Module 02 Independent now has two explicit steps: (1) Analizează DOCX, inspect before/after for crossed-out text, (2) Inserează V3 only after analysis. Checkbox/default and DOCX/plan hashes locked. Zero omitted when checked or incompatible old engine => STOP, not a false success. No changes to 01/03/04/05 or Premiere executor. Existing V3 is not modified. Adobe Premiere LIVE still needs confirmation, not Stable.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
