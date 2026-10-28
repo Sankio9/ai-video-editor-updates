@@ -107,6 +107,19 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(r["items"],[])
         self.assertEqual(decide(p,p["planSHA256"],CTX["sequenceId"],
                                 "COMPLETE_AFTER_PREFLIGHT")["decision"],"PENDING_LIVE_PREFLIGHT")
+    def test_real_r1913_diagnostic_schema_uses_asr_status_and_scriptText(self):
+        for e in self.d["events"]:
+            e["asr"]["status"]=e["asr"].pop("matchStatus")
+            e["scriptText"]="Acesta este un exemplu sintetic cu suficiente cuvinte."
+            e.pop("dialogueWordCount")
+        p,r=self.make()
+        self.assertEqual((p["confirmedCount"],p["placeholderCount"]),(9,10))
+        self.assertEqual({x["reason"] for x in r["items"] if x["sourceCode"]=="9974"},
+                         {"AUDIO_NOT_FOUND"})
+    def test_conflicting_status_fields_are_blocked(self):
+        self.d["events"][0]["asr"]["status"]="AI_MATCHED"
+        with self.assertRaisesRegex(ValueError,"CONTRADICTORY_ASR_STATUS_STOP"):
+            self.make()
     def test_user_stops_without_authorization(self):
         p,_=self.make()
         self.assertFalse(decide(p,p["planSHA256"],CTX["sequenceId"],"STOP")["writeAuthorized"])
