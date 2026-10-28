@@ -1,0 +1,6 @@
+{
+  "version": "2.0.7",
+  "source_sha": "743999690855e90ddd20f47f7930c0892c6e536c",
+  "requires_installed": "2.0.5",
+  "purpose": "Opt-in DOCX strikethrough omission for independent subtitles 02, keep 01/03/04/05 untouched"
+}
