@@ -1,0 +1,36 @@
+name: R2.2 public release editor/CEP interface inspection
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths: ['.github/workflows/r220-writer-api-audit.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch public Beta source archive only
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p /tmp/aive
+          gh release download v2.1.3 -p AIVE_UPDATE.zip --dir /tmp/aive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Inspect names and key public APIs
+        run: |
+          python - <<'PY'
+          import json,zipfile,re
+          with zipfile.ZipFile('/tmp/aive/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              print('FILES', [(r['path'],r['before_sha256']) for r in m['files']])
+              names=z.namelist()
+              print('NAMES',names)
+          # The R1.9.13 source is public release code, private editorial media never involved.
+          PY
+          gh_dummy='done'
+          echo "$gh_dummy"
