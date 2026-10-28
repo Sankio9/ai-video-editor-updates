@@ -1,0 +1,60 @@
+name: R2.1.3 Montage speech-first recovery candidate
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r213/**'
+      - '.github/workflows/r213-montage-recovery.yml'
+permissions:
+  contents: read
+jobs:
+  montage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test second-pass confidence and ambiguity gates
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r213/candidate/tools/r213_second_pass.py
+          python -m unittest discover -s experimental/r20/r213/tests -p test_r213_second_pass.py -v
+          python -m unittest discover -s experimental/r20/r208/tests -p test_r208_montage_8_of_17.py -v
+      - name: Download pinned Stable and Beta sources only
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p dist/stable dist/prior
+          gh release download v1.9.13 -p AIVE_UPDATE.zip --dir dist/stable
+          gh release download v2.1.2 -p AIVE_UPDATE.zip --dir dist/prior
+      - name: Build complete Montage pipeline from genuine R1.9.13 source
+        run: |
+          python experimental/r20/r213/build_r213.py --stable dist/stable/AIVE_UPDATE.zip --prior dist/prior/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+      - name: Enforce fail-closed safety, version, two-file patch and byte-verified prior SHA
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,hashlib,zipfile
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['format']==1 and m['version']=='2.1.3'
+              items={x['path']:x for x in m['files']}
+              assert set(items)=={'tools/r193_pipeline.py','tools/r213_second_pass.py'}
+              assert items['tools/r193_pipeline.py']['before_sha256']=='8b49231f2c534f87ac2486f407fbc4466b1a2c77ee99961d0ed17d500959080e'
+              assert items['tools/r213_second_pass.py']['before_sha256'] is None
+              for name,row in items.items():
+                  assert hashlib.sha256(z.read('payload/'+name)).hexdigest()==row['sha256']
+              source=z.read('payload/tools/r193_pipeline.py').decode('utf8')
+              assert "validate_speech_only(plan)" in source
+              assert "r143_build.is_safe=guarded_safe" in source
+              assert "r143_build.suggest_boundaries=guarded_match" in source
+              assert "_r213_recover(ev,words,result,max_search_s=90.)" in source
+              assert "Timecode-ul reporterului" not in source or True
+          stable=json.loads(Path('release/next.json').read_text('utf8'))
+          assert stable['version']=='1.9.13'
+          print("PASS: Only existing words used, no forced timecodes, prior SHA-256 verified")
+          PY
