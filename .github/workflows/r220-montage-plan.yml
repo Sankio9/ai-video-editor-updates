@@ -25,7 +25,7 @@ jobs:
           node-version: '20'
       - name: Premiere JSX writer in isolated mock
         run: |
-          node --check experimental/r20/r220/cep/jsx/r220_montage_writer.jsx
+          node --check < experimental/r20/r220/cep/jsx/r220_montage_writer.jsx
           node experimental/r20/r220/tests/test_r220_writer.js
       - name: Preserve prior ASR safe-selective recovery gates
         run: |
