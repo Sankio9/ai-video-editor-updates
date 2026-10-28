@@ -33,17 +33,6 @@ jobs:
                   src=z.read('payload/'+item['path']).decode('utf8')
                   lines=src.splitlines()
                   print('FILE',item['path'],'LINES',len(lines))
-                  hits=[]
                   for i,l in enumerate(lines):
-                      if any(phrase in l for phrase in (
-                           'Montează după scenariu','cutR193','function begin','function run',
-                           'cutStatus','cutBuild','cutR193Start','cutCheck','cutVerify',
-                           'evalScript','r193_workflow','r193_media_probe','last_match_diagnostic',
-                           'function finish','spawn(','process.stdout','r193Status','r193Start',
-                           'r193Run','JSON.parse','function install')):
-                          hits.append(i)
-                  for i in hits[:65]:
-                      print('SNIP',i+1)
-                      for p in range(max(0,i-1),min(len(lines),i+4)):
-                          print('%03d'%(p+1),lines[p][:220])
+                      print('%03d'%(i+1),l[:260])
           PY
