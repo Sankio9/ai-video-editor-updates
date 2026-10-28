@@ -163,3 +163,11 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] 19 CUT-uri sintetic -> 9 validate/10 placeholders. Două sincronuri cu sursa 9974 ONLINE sunt `AUDIO_NOT_FOUND`, nu două fișiere distincte pierdute; dacă 9974 MISSING, raportul conține un singur cod de sursă distinct lipsă.
 - [x] `AI_MATCHED` fără validator nu devine clip. Timecode de 1 sec pentru o declarație lungă nu determină tăierea. Plan mutat/sequence ID schimbat/refuz user blochează orice autorizare.
 - [ ] **NU ESTE LIVE**: scanner Project Panel, mapping pe montajul DOCX real, dialogul contextual, slot marker Premiere V1/A1, backup/rollback, citirea după inserare și persistent notification în panou încă neimplementate. Nicio versiune R2.2 Beta de instalat. Stable R1.9.13 păstrată.
+
+
+## R2.2 writer/marker CI (28 octombrie 2026)
+- [x] `r220_montage_writer.jsx` creat, cu preflight și scriere numai în secvență `[AIVE TEST]` și V1/A1 goale/locked-free; marker interval pe slot, nume CUT/cod/reason, readback și rollback non-ripple. 8 mock scenarii Node PASS; **nu validat în Premiere**.
+- [x] `r220_montage_plan.py` citește schema `asr.status` / `scriptText` reală, verifică ProjectItem nodeId, raportează distinct media lipsă vs audio lipsă. CI https://github.com/Sankio9/ai-video-editor-updates/actions/runs/40728601602 SUCCESS: 21 plan tests + 8 writer mocks + 18 matcher + 2 recovery.
+- [ ] `r193_workflow.js` trebuie să invoce analiza R220 după diagnosticul ASR și să afișeze dialog numai dacă există probleme; nu există încă ramură integrată în panoul 01.
+- [ ] Schema plan trebuie să includă şi VO-card + spațiile editoriale din scenariul DOCX, nu doar CUT-urile din diagnosticul R193.
+- [ ] Premiere LIVE pe copie de secvență: `Sequence.overwriteClip`, `MarkerCollection.createMarker`, `TrackItem.remove(false,false)`, `marker.end` readback și restaurarea source In/Out, fără ripple pe alte piste, confirmate manual. Până atunci **NU instala/wire writerul în beta publică**.
