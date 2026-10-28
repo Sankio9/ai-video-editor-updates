@@ -54,6 +54,14 @@ jobs:
           python -m unittest discover -s experimental/r20/r206/tests -p 'test_r206_source_inventory.py' -v
           node --check < experimental/r20/r206/cep/jsx/r206_project_scan.jsx
           node experimental/r20/r206/tests/test_r206_project_scan_mock.js
+      - name: R2.0.7 DOCX crossed-out transcript policy (tests only)
+        run: |
+          python -m py_compile experimental/r20/r207/tools/r207_docx_strike.py
+          python -m py_compile experimental/r20/r207/candidate/tools/r20_graphics_plans.py
+          python -m unittest discover -s experimental/r20/r207/tests -p 'test_r207_strike.py' -v
+          python -m unittest discover -s experimental/r20/r207/tests -p 'test_r207_planner.py' -v
+          node --check experimental/r20/r207/candidate/cep/r20_panel.js
+          node experimental/r20/r207/tests/test_r207_ui.js
       - name: Require published Stable to stay v1.9.13 pending LIVE certification
         env:
           GH_TOKEN: ${{ github.token }}
