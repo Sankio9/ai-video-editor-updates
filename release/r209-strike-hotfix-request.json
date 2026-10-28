@@ -1,0 +1,6 @@
+{
+  "version": "2.0.9",
+  "source_sha": "ad7bf0e9a77f7f75ba25bb7c2b930604d35b4118",
+  "requires_installed": "2.0.7",
+  "purpose": "Stop false 0-omission PASS and parse Word inherited strike and tracked deletion, one-file Beta hotfix"
+}
