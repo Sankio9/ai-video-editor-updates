@@ -98,6 +98,9 @@ def build(diagnostic,context,inventory,validated_cuts):
         if name is not None and (not isinstance(name,str) or not name.strip() or len(name)>256):
             raise ValueError("Bad source name")
         if state=="ONLINE" and not name:raise ValueError("Source name not verified")
+        node_id=media.get("nodeId")
+        if state=="ONLINE" and (not isinstance(node_id,str) or not node_id.strip()):
+            raise ValueError("Online source has no verified Project Panel nodeId")
         status=a.get("matchStatus")
         if status not in set(REASONS)|{"AI_MATCHED"}:raise ValueError("UNKNOWN_MATCH_STATUS_STOP")
         is_valid=status=="AI_MATCHED" and cut in verified and state=="ONLINE"
@@ -108,7 +111,7 @@ def build(diagnostic,context,inventory,validated_cuts):
                 raise ValueError("MATCHED_BOUNDS_UNSAFE "+cut)
             length=rnd(end-start)
             row={"cutId":cut,"sourceCode":code,"sourceName":name,
-                 "state":"CONFIRMED","timelineStart":rnd(cursor),
+                 "state":"CONFIRMED","sourceNodeId":node_id,"timelineStart":rnd(cursor),
                  "timelineEnd":rnd(cursor+length),"durationSeconds":length,
                  "durationKind":"AUDIO_VERIFIED","sourceIn":rnd(start),"sourceOut":rnd(end)}
         else:
