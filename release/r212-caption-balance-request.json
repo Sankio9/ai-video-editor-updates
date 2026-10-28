@@ -1,0 +1,6 @@
+{
+  "version": "2.1.2",
+  "source_sha": "a600484882ad1b505ce0c0c59a32f1c806552e4e",
+  "requires_installed": "2.1.1",
+  "purpose": "Balance subtitle leftovers by semantic sentence boundaries without changing text or one-click UI"
+}
