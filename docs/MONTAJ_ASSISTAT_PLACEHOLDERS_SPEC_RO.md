@@ -81,3 +81,13 @@ P3: comparație cu editările editorului pentru „Învață din corecturile mel
 - [ ] Listă persistentă după reîncărcarea panelului pentru aceeași secvență; nu se amestecă rapoarte ale secvențelor diferite.
 - [ ] Refuz `Oprește` => zero inserări și zero raport fals de `montaj finalizat`; planul/diagnosticul local poate rămâne read-only.
 - [ ] Nicio valoare privată exportată în GitHub sau telemetrie; fără transcrieri/mesaje sensibile în notificări.
+
+
+## R2.2 — implementare inițială planificator (CI) — 28.10.2026
+
+- **Cod candidat existent**, nu doar specificație: `experimental/r20/r220/tools/r220_montage_plan.py`, GitHub branch `feature/r20-independent-graphics-gate`. Folosește diagnostic curent `aive-match-diagnostic-v1`, context SHA256 (DOCX+diagnostic), identitatea secvenței, inventar Project Panel și lista de CUT-uri care au trecut **validatorul de siguranță moștenit**. Eticheta `AI_MATCHED` singură NU autorizează inserarea.
+- Rezultat **ANALYSIS_ONLY**: `CONFIRMED` pentru audio verificat cu `sourceIn/sourceOut`, `PLACEHOLDER` pentru orice CUT nesigur, cu `timelineStart/End`, durată ESTIMATĂ numai din ASR slab plauzibil sau word-count, motiv exact și action. Niciun fallback la reporter TC pentru source IN/OUT. Media ambiguă/necunoscută și statusul necunoscut blochează planul.
+- `decide(...)` solicită `CONTINUE_WITH_PLACEHOLDERS` când există probleme; `STOP` nu autorizează scrierea. Chiar după aprobare returnează `PENDING_LIVE_PREFLIGHT` și `writeAuthorized:false`; scrierea efectivă pe V1/A1 nu este implementată.
+- `verify_readback(...)` poate construi raportul `POST_READBACK` numai din lista exactă de clipuri și markere returnate de viitorul writer Premiere; rezultatele nu sunt inventate la finalizarea analizei. Raportul este atomic și local, fără textul interviului.
+- **CI PASS** https://github.com/Sankio9/ai-video-editor-updates/actions/runs/40726539952 — 19 teste noi sintetice + regresii din matcher R2.1.3 și planificarea ASR R2.0.8. Acest rezultat **nu este Premiere LIVE PASS**. Nu modifica release/next.json / v1.9.13 Stable.
+- **P0 următor:** adaptarea motorului 01 pentru un singur buton, scanarea întregului DOCX, preflight fără scriere, dialog contextual (numai la CUT-uri nesigure), apoi writer atomic pe copie de secvență V1/A1 + markere, readback/rollback și raport persistent în panou. Nu publica Beta ca funcțională fără test LIVE Premiere.
