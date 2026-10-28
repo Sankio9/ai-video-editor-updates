@@ -14,7 +14,7 @@ def fixture(n=19):
     ev=[];media={}
     for i in range(1,n+1):
         cut="CUT-%02d"%i;code=CODES.get("%02d"%i,"9981")
-        media[code]={"state":"ONLINE","name":"Original_"+code+".mov"}
+        media[code]={"state":"ONLINE","name":"Original_"+code+".mov","nodeId":"PROJECT_NODE_"+code}
         review=i in MISSING
         status=("REVIEW_NO_MATCH" if i in (18,19) else
                 "REVIEW_WEAK_TRANSCRIPT" if i==8 else
