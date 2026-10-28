@@ -60,6 +60,13 @@ class R212Integrated(unittest.TestCase):
         self.assertTrue(all(len(x)<=74 for x in chunks))
         self.assertFalse(any(x.endswith(' Să') for x in chunks))
         self.assertGreaterEqual(min(len(x) for x in chunks),27,chunks)
+        # Editorial boundary: after "planul de admitere." the next cue
+        # MUST begin the new sentence, not hold a fragment of it.
+        self.assertTrue(any(x.startswith('Să informăm') for x in chunks),chunks)
+        after=[x for x in chunks if x.startswith('Să informăm')]
+        self.assertEqual(len(after),1)
+        nxt=chunks.index(after[0])
+        self.assertLessEqual(abs(len(chunks[nxt])-len(chunks[nxt+1])),15,chunks)
 
     def test_short_standalone_sentence_not_split(self):
         for text in ("Da.","Să mergem.","Nu, mulțumesc!","Este o propoziție scurtă."):
