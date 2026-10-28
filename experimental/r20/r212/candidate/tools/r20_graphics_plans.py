@@ -70,9 +70,16 @@ def split_subtitles_readable(text, limit=74):
         def edge(i,j):
             count=charlen(i,j)
             penalty=110.0*((count-target)/max(20.0,target))**2
-            minimum_readable=min(25.0,target*.6)
+            minimum_readable=min(31.0,target*.75)
             if count<minimum_readable:
-                penalty+=25.0*((minimum_readable-count)/max(1.0,minimum_readable))**2
+                penalty+=80.0*((minimum_readable-count)/max(1.0,minimum_readable))**2
+            # A cue should not merge the tail of an entire sentence
+            # with a substantial fragment of the next sentence. Keep
+            # semantic boundaries whenever balancing can afford it.
+            for q in range(i+1,j):
+                if (_SENTENCE_END.search(words[q-1]) and
+                    charlen(i,q)>=18 and charlen(q,j)>=18):
+                    penalty+=75.0
             if j==n:return penalty
 
             ending=words[j-1].strip('.,!?;:„”«»').casefold()
@@ -81,7 +88,7 @@ def split_subtitles_readable(text, limit=74):
 
             previous=words[j-1];following=words[j].casefold().strip('„«')
             if _SENTENCE_END.search(previous):
-                penalty-=22.0
+                penalty-=40.0
             elif previous.endswith((',', ';', ':')):
                 penalty-=14.0
             elif following in _CLAUSE_START:
