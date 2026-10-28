@@ -1,0 +1,97 @@
+name: Publish R2.1.1 — one-click readable subtitles (BETA only)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r211-oneclick-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r211-beta
+  cancel-in-progress: false
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Protect Stable and verify exact user-requested Beta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          j=json.load(open('release/r211-oneclick-request.json'))
+          assert j=={
+             'version':'2.1.1',
+             'source_sha':'8b14045f38d8afc82a87fef2224c7f528d80360d',
+             'requires_installed':'2.1.0',
+             'purpose':'One-click subtitles with internal mandatory DOCX preflight, sentence-aware 74-char wrapping'
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          test "$(gh release view v2.1.0 --json isPrerelease --jq .isPrerelease)" = "true"
+          ! gh release view v2.1.1 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 8b14045f38d8afc82a87fef2224c7f528d80360d
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install synthetic DOCX test dependency only
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: DOCX Strikethrough and readable sentence-wrap regression
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r211/candidate/tools/r20_graphics_plans.py experimental/r20/r211/candidate/tools/r207_docx_strike.py
+          python -m unittest discover -s experimental/r20/r211/tests -p test_r211_planner.py -v
+          python -m unittest discover -s experimental/r20/r209/tests -p test_r209_strike_ooxml.py -v
+      - name: One-click CEP automatic preflight and MOGRT safety mocks
+        run: |
+          set -eu
+          node --check experimental/r20/r211/candidate/cep/r20_panel.js
+          node experimental/r20/r211/tests/test_r211_ui.js
+          node experimental/r20/r211/tests/test_r211_full_flow.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p test_r201_nametag.py -v
+          python -m unittest discover -s tests_r20 -p test_r203_review.py -v
+      - name: Download exact published prior Beta and build verified delta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p dist/prior
+          gh release download v2.1.0 -p AIVE_UPDATE.zip --dir dist/prior
+          python experimental/r20/r211/build_r211.py --prior dist/prior/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import json,zipfile,hashlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['version']=='2.1.1' and m['format']==1
+              row={x['path']:x for x in m['files']}
+              assert set(row)=={'cep/r20_panel.js','tools/r20_graphics_plans.py'}
+              assert all(len(x['before_sha256'])==64 for x in row.values())
+              assert all(hashlib.sha256(z.read('payload/'+k)).hexdigest()==x['sha256'] for k,x in row.items())
+          print('PASS: R2.1.1 exactly two files, SHA256 and installer backup base verified')
+          PY
+      - name: Publish Beta-only; never change Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.1.1 dist/AIVE_UPDATE.zip \
+            --target 8b14045f38d8afc82a87fef2224c7f528d80360d \
+            --title 'AI Video Editor R2.1.1 — Subtitrări clare, un singur click (BETA)' \
+            --notes 'BETA incremental only from installed v2.1.0 through in-app updater. Module 02 Independent: single button Inserează subtitrările and existing optional Word Strikethrough checkbox; invisible DOCX analysis ALWAYS completes before any Premiere action. Source/plan SHA and option checked again before inserts. New sentence-aware <=74-char wrap: Să informăm begins in the NEXT cue, not at end of previous. No MOGRT executor, 01, 03, 04 or 05 changes. Does not delete/overwrite V3 contents automatically. Adobe Premiere LIVE verification still required. Stable v1.9.13 unchanged.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
