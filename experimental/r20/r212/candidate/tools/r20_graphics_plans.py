@@ -341,7 +341,7 @@ def build(docx:Path, module:str, separator:float=SEPARATOR, omit_struck:bool=Fal
             'strikeAnalysisReady':True if module=='02' else False,
             'reviewPolicy':('EXPLICIT_SKIP_APPROVAL' if review_required else
                             'AUTO_AMBIENCE_SKIP' if skipped else 'NONE'),
-            'containsAudioSync':False,'generatorVersion':'R2.1.2-balanced-subtitle-candidate'}
+            'containsAudioSync':False,'generatorVersion':'R2.1.1-auto-preflight-readable'}
 
 def main():
     p=argparse.ArgumentParser()
