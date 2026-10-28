@@ -57,7 +57,7 @@ def estimate(e,a):
         return rnd(last-first),"ESTIMATED_WEAK_ASR"
     count=e.get("dialogueWordCount")
     if count is None:
-        txt=e.get("text")
+        txt=e.get("text") or e.get("scriptText")
         if not isinstance(txt,str) or not txt.strip():
             raise ValueError("Cannot estimate duration without word count")
         count=len(txt.split())
@@ -101,7 +101,11 @@ def build(diagnostic,context,inventory,validated_cuts):
         node_id=media.get("nodeId")
         if state=="ONLINE" and (not isinstance(node_id,str) or not node_id.strip()):
             raise ValueError("Online source has no verified Project Panel nodeId")
-        status=a.get("matchStatus")
+        # Real R1.9.13 exports "asr.status"; older diagnostic fixtures
+        # used "matchStatus". Both must agree if both are supplied.
+        if a.get("status") is not None and a.get("matchStatus") is not None and a["status"]!=a["matchStatus"]:
+            raise ValueError("CONTRADICTORY_ASR_STATUS_STOP")
+        status=a.get("status") or a.get("matchStatus")
         if status not in set(REASONS)|{"AI_MATCHED"}:raise ValueError("UNKNOWN_MATCH_STATUS_STOP")
         is_valid=status=="AI_MATCHED" and cut in verified and state=="ONLINE"
         if is_valid:
