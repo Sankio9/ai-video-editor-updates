@@ -30,6 +30,7 @@ jobs:
         run: |
           node --check experimental/r20/r210/candidate/cep/r20_panel.js
           node experimental/r20/r210/tests/test_r210_ui.js
+          node experimental/r20/r210/tests/test_r210_full_flow.js
           node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
           node experimental/r20/tests/guard.test.js
       - name: Retain NameTag and version-safety invariants
