@@ -1,0 +1,99 @@
+name: R2.0.9 — Word Strikethrough hotfix (BETA only)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r209-strike-hotfix-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r209-beta-hotfix
+  cancel-in-progress: false
+jobs:
+  beta-hotfix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact request and protect latest Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          j=json.load(open('release/r209-strike-hotfix-request.json'))
+          assert j=={
+            "version":"2.0.9",
+            "source_sha":"ad7bf0e9a77f7f75ba25bb7c2b930604d35b4118",
+            "requires_installed":"2.0.7",
+            "purpose":"Stop false 0-omission PASS and parse Word inherited strike and tracked deletion, one-file Beta hotfix"
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          test "$(gh release view v2.0.7 --json isPrerelease --jq .isPrerelease)" = 'true'
+          ! gh release view v2.0.9 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: ad7bf0e9a77f7f75ba25bb7c2b930604d35b4118
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install DOCX parser
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Download and verify exact prior release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p dist/prior
+          gh release download v2.0.7 -p AIVE_UPDATE.zip --dir dist/prior
+          python - <<'PY'
+          import hashlib,pathlib
+          f=pathlib.Path('dist/prior/AIVE_UPDATE.zip')
+          assert hashlib.sha256(f.read_bytes()).hexdigest()=='526cad27b2de0afbe3d27d920604a097e39ce9f2208c9dcf60efd9957535e622'
+          print('PASS exact v2.0.7 published Beta asset')
+          PY
+      - name: OOXML and integrated subtitle generator regression
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r209/candidate/tools/r207_docx_strike.py
+          python -m unittest discover -s experimental/r20/r209/tests -p 'test_r209_strike_ooxml.py' -v
+          python -m unittest discover -s experimental/r20/r209/tests -p 'test_r209_planner.py' -v
+          node --check experimental/r20/r207/candidate/cep/r20_panel.js
+          node experimental/r20/r207/tests/test_r207_ui.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+      - name: Build strict one-file Beta delta
+        run: |
+          set -eu
+          python experimental/r20/r209/build_r209.py --prior dist/prior/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import hashlib,json,zipfile
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['version']=='2.0.9' and m['format']==1 and len(m['files'])==1
+              x=m['files'][0]
+              assert x['path']=='tools/r207_docx_strike.py'
+              assert len(x['before_sha256'])==64
+              assert hashlib.sha256(z.read('payload/'+x['path'])).hexdigest()==x['sha256']
+          print('PASS single-file allowlist with exact before_sha256 and rollback input')
+          PY
+      - name: Publish prerelease only; Stable remains frozen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.0.9 dist/AIVE_UPDATE.zip \
+            --target ad7bf0e9a77f7f75ba25bb7c2b930604d35b4118 \
+            --title 'AI Video Editor R2.0.9 — Word Strikethrough fix (BETA)' \
+            --notes 'EXPERIMENTAL hotfix, incremental only from installed v2.0.7 using the in-Premiere Beta updater. Detect Word inherited strike, double strike, tracked deletions and hyperlinks. If checkbox is ON but zero characters would be removed, STOP before V3 insertion; no more false READBACK PASS with 0 omissions. Only tools/r207_docx_strike.py changed. Existing timeline V3 is NOT automatically replaced. No changes to 01 montage, 03/04, VO 05 HOLD. Must validate on original DOCX in Premiere; still NOT Stable.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
