@@ -11,7 +11,10 @@ function mock(){
   }});}
   function markerCollection(){return {
     createMarker(sec){
-      const m={start:{seconds:sec},end:{seconds:sec},name:'',comments:''};
+      const m={start:{seconds:sec},name:'',comments:''};
+      let endSec=sec;
+      Object.defineProperty(m,'end',{get(){return {seconds:endSec}},
+        set(v){endSec=Number(v)}});
       markers.push(m);events.push('marker-create');return m;
     },deleteMarker(m){let i=markers.indexOf(m);if(i<0)return false;markers.splice(i,1);events.push('marker-remove');return true;},
     getFirstMarker(){return markers[0]||null;},
@@ -79,7 +82,7 @@ function mock(){
  assert.deepEqual([...actual.placeholderMarkerIds],['CUT-02']);
  assert.equal(m.video.length,2);assert.equal(m.audio.length,2);assert.equal(m.markers.length,1);
  assert.equal(m.markers[0].name,'AIVE-R220 CUT-02 9931');
- assert.equal(m.markers[0].end,8);
+ assert.equal(m.markers[0].end.seconds,8);
  assert.equal(m.item._in,0);assert.equal(m.item._out,100);
 })();
 (function testApprovalAndOccupiedTracks(){
