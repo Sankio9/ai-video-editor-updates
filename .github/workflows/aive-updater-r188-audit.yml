@@ -38,9 +38,7 @@ jobs:
                   if name.endswith(('.js','.py')):
                     txt=z.read('payload/'+name).decode('utf8')
                     for i,line in enumerate(txt.splitlines(),1):
-                      if ('spawn(' in line or 'JSON.stringify' in line or 'PYTHONIOENCODING' in line or
-                         'python.exe' in line or 'Răspuns' in line or 'response' in line or
-                         'var py' in line):
-                        print('SOURCE',i,line[:200].encode('ascii','backslashreplace').decode('ascii'))
+                      if zpath.parent.name=='v2.0.2':
+                        print('SOURCE',name,i,line[:280].encode('ascii','backslashreplace').decode('ascii'))
             except Exception as e:print('READ_FAILED',zpath.parent.name,str(e))
           PY
