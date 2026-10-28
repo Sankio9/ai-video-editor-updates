@@ -32,10 +32,10 @@ class R207Integrated(unittest.TestCase):
     def tearDown(self):self.tmp.cleanup()
     def prepare(self,segments,graphics=None):
         self.doc.save(self.path)
-        STUBS['reportaj_r1_parse_docx']['extract'].__call__
-        sys.modules['reportaj_r1_parse_docx'].extract=lambda p:{
-            'segments':segments,'graphics':graphics or []}
-        sys.modules['r193_docx_reader'].read=lambda p:{'segments':[],'captions':[]}
+        # Generator imported the functions by value: patch its module globals,
+        # not only the stub package attributes.
+        planner.extract=lambda p:{'segments':segments,'graphics':graphics or []}
+        planner.read_r193=lambda p:{'segments':[],'captions':[]}
 
     @staticmethod
     def cut(i,p,text,italic=False):
