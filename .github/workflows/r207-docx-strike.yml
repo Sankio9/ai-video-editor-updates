@@ -26,6 +26,7 @@ jobs:
           python -m py_compile experimental/r20/r207/tools/r207_docx_strike.py
           python -m py_compile experimental/r20/r207/candidate/tools/r20_graphics_plans.py
           python -m unittest discover -s experimental/r20/r207/tests -p 'test_r207_strike.py' -v
+          python -m unittest discover -s experimental/r20/r207/tests -p 'test_r207_planner.py' -v
       - name: CEP checkbox independence and legacy restore tests
         run: |
           node --check experimental/r20/r207/candidate/cep/r20_panel.js
