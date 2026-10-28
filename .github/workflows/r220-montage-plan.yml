@@ -20,6 +20,13 @@ jobs:
         run: python -m py_compile experimental/r20/r220/tools/r220_montage_plan.py
       - name: Test missing CUTs, status reasons, timestamp/approval and readback
         run: python -m unittest discover -s experimental/r20/r220/tests -p 'test_r220_montage_plan.py' -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Premiere JSX writer in isolated mock
+        run: |
+          node --check experimental/r20/r220/cep/jsx/r220_montage_writer.jsx
+          node experimental/r20/r220/tests/test_r220_writer.js
       - name: Preserve prior ASR safe-selective recovery gates
         run: |
           python -m unittest discover -s experimental/r20/r213/tests -p 'test_r213_second_pass.py' -v
