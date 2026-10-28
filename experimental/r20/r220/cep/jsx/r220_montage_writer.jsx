@@ -36,7 +36,7 @@ var AIVE_R220 = (function(){
        !plan.planSHA256||String(plan.planSHA256).length!==64)fail("PLAN_INVALID");
     if(identity(s)!==plan.identity.sequenceId)fail("SEQUENCE_CHANGED");
     if(String(s.name).indexOf("[AIVE TEST]")<0)fail("COPY_REQUIRED: rename a separate TEST sequence to [AIVE TEST]");
-    if(!plan.cuts||plan.cuts.length!==plan.totalCuts ||
+    if(!plan.cuts||plan.cuts.length!==(plan.editorialEventCount||plan.totalCuts) ||
        plan.totalCuts>2000||!plan.totalCuts)fail("CUT_COUNT_INVALID");
     if(choice!==(plan.approvalRequired?"CONTINUE_WITH_PLACEHOLDERS":"COMPLETE_AFTER_PREFLIGHT"))
        fail("EXPLICIT_APPROVAL_REQUIRED");
@@ -48,10 +48,10 @@ var AIVE_R220 = (function(){
     }
   }
   function validateSources(plan,byId){
-    var seen={},previous=0,clipCount=0,slotCount=0,selected={};
+    var seen={},previous=0,clipCount=0,slotCount=0,voCount=0,selected={};
     for(var i=0;i<plan.cuts.length;i++){
       var c=plan.cuts[i];
-      if(!c||!/^CUT-[0-9]{1,4}$/.test(c.cutId)||seen[c.cutId])fail("CUT_DUPLICATE");
+      if(!c||!(/^(CUT-[0-9]{1,4}|VO-[0-9]{1,4})$/.test(c.cutId))||seen[c.cutId])fail("CUT_DUPLICATE");
       seen[c.cutId]=1;
       if(!number(c.timelineStart)||!number(c.timelineEnd)||
          !number(c.durationSeconds)||c.timelineEnd<=c.timelineStart||
@@ -59,7 +59,12 @@ var AIVE_R220 = (function(){
          !close(c.timelineEnd-c.timelineStart,c.durationSeconds))
           fail("TIMELINE_RANGE_INVALID "+c.cutId);
       previous=c.timelineEnd;
-      if(c.state==="PLACEHOLDER"){
+      if(c.state==="VO_RESERVE"){
+        if(!/^VO-[0-9]{1,4}$/.test(c.cutId)||!c.estimated ||
+           c.sourceIn!==undefined||c.sourceOut!==undefined)
+           fail("VO_RESERVE_INVALID");
+        voCount++;
+      }else if(c.state==="PLACEHOLDER"){
         if(c.sourceIn!==undefined||c.sourceOut!==undefined||
            !c.reason||!c.estimated)fail("PLACEHOLDER_CANNOT_HAVE_SOURCE_IN_OUT");
         slotCount++;
@@ -73,7 +78,8 @@ var AIVE_R220 = (function(){
         if(selected[c.cutId])fail("SOURCE_CONFLICT");selected[c.cutId]=item;clipCount++;
       }else fail("UNKNOWN_CUT_STATE");
     }
-    if(clipCount!==plan.confirmedCount||slotCount!==plan.placeholderCount)
+    if(clipCount!==plan.confirmedCount||slotCount!==plan.placeholderCount||
+       voCount!==(plan.voReserveCount||0))
        fail("COUNT_INTEGRITY_ERROR");
     return selected;
   }
@@ -160,9 +166,9 @@ var AIVE_R220 = (function(){
         if(row.state==="CONFIRMED"){
           insert(s,sources[row.cutId],row,added);
           resultIds.push(row.cutId);
-        }else{
+        }else if(row.state==="PLACEHOLDER"){
           marker(s,row,markers);markerIds.push(row.cutId);
-        }
+        }else if(row.state!=="VO_RESERVE")fail("UNKNOWN_EVENT");
       }
       if(s.videoTracks[0].clips.numItems!==plan.confirmedCount||
          s.audioTracks[0].clips.numItems!==plan.confirmedCount ||
