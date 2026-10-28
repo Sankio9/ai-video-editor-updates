@@ -1,0 +1,50 @@
+name: R2.1.0 — Subtitle two-stage DOCX analysis before Premiere
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r210/**'
+      - '.github/workflows/r210-two-phase.yml'
+permissions:
+  contents: read
+jobs:
+  subtitle-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Word synthetic-only dependencies
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Test OOXML inherited-strike, deleted text and new verified analysis
+        run: |
+          python -m py_compile experimental/r20/r210/candidate/tools/r20_graphics_plans.py experimental/r20/r210/candidate/tools/r207_docx_strike.py
+          python -m unittest discover -s experimental/r20/r209/tests -p 'test_r209_strike_ooxml.py' -v
+          python -m unittest discover -s experimental/r20/r210/tests -p 'test_r210_preflight.py' -v
+      - name: Test CEP two-stage mandatory preview and no partial timeline writes
+        run: |
+          node --check experimental/r20/r210/candidate/cep/r20_panel.js
+          node experimental/r20/r210/tests/test_r210_ui.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+      - name: Retain NameTag and version-safety invariants
+        run: |
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p 'test_r201_nametag.py' -v
+          python -m unittest discover -s tests_r20 -p 'test_r203_review.py' -v
+      - name: Stable stays protected
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          assert json.load(open('release/next.json',encoding='utf8'))['version']=='1.9.13'
+          p=pathlib.Path('experimental/r20/r210/candidate/cep/r20_panel.js').read_text('utf8')
+          assert "STRIKETHROUGH_NOT_DETECTED" in p
+          assert "r210AnalyzeSubs" in p
+          assert "ENGINE_VERSION_MISMATCH" in p
+          print('PASS: no public stable write, V3 analysis required')
+          PY
