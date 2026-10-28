@@ -3,7 +3,7 @@ import json,sys,tempfile,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]/"tools"
 sys.path.insert(0,str(ROOT))
-sys.path.insert(0,str(Path(__file__).resolve().parents[5]/"scripts"))
+sys.path.insert(0,str(Path(__file__).resolve().parents[4]/"scripts"))
 from r220_capture import capture,R220Captured
 
 def make_plan(matched=True,with_voice=True):
