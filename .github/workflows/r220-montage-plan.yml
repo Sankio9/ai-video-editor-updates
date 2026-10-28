@@ -1,0 +1,40 @@
+name: R2.2 — Montage plan and missing-CUT read-only gate
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r220/**'
+      - '.github/workflows/r220-montage-plan.yml'
+permissions:
+  contents: read
+jobs:
+  draft-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile isolated Montage 01 planner
+        run: python -m py_compile experimental/r20/r220/tools/r220_montage_plan.py
+      - name: Test missing CUTs, status reasons, timestamp/approval and readback
+        run: python -m unittest discover -s experimental/r20/r220/tests -p 'test_r220_montage_plan.py' -v
+      - name: Preserve prior ASR safe-selective recovery gates
+        run: |
+          python -m unittest discover -s experimental/r20/r213/tests -p 'test_r213_second_pass.py' -v
+          python -m unittest discover -s experimental/r20/r208/tests -p 'test_r208_montage_8_of_17.py' -v
+      - name: Stable and authorisation invariant
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          assert json.loads(Path('release/next.json').read_text('utf8'))['version']=='1.9.13'
+          s=Path('experimental/r20/r220/tools/r220_montage_plan.py').read_text('utf8')
+          assert 'safeToModifyPremiereTimeline":False' in s
+          assert 'PENDING_LIVE_PREFLIGHT' in s
+          assert 'sourceIn' in s and 'AUDIO_VERIFIED' in s
+          assert 'REPORT_SCHEMA' in s and 'ANALYSIS_ONLY' in s
+          assert not any(x in s for x in ("app.project.activeSequence", "importMGT", "overwriteClip("))
+          print('PASS — only analysis, never direct Premiere write, Stable unchanged')
+          PY
