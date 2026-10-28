@@ -51,13 +51,13 @@ def build(prior,workflow,output):
       "cached=(previous.get('fingerprint')==digest and",
       "cached=(os.environ.get('AIVE_R220_CAPTURE')!='1' and previous.get('fingerprint')==digest and")
     code=replace_once(code,
-      "                   # Runs BEFORE old_write: unsafe plans never overwrite good JSON.",
-      """                   # R2.2 capture stops the legacy writer BEFORE ANY plan mutation.
+      "                   if plan.get('review'):",
+      """                   # R2.2 capture precedes legacy write and all timeline work.
                    if os.environ.get('AIVE_R220_CAPTURE')=='1':
                        from r220_capture import capture
                        capture(plan,mapping,docx,os.environ['AIVE_R220_MEDIA_JSON'],
                                os.environ['AIVE_R220_SEQUENCE_ID'])
-                   # Runs BEFORE old_write: unsafe plans never overwrite good JSON.""")
+                   if plan.get('review'):""")
     for marker in ("validate_speech_only(plan)","r143_build.is_safe=guarded_safe",
                    "r143_build.write_results=guarded_write",
                    "r143_build.write_results=old_write",
