@@ -44,7 +44,7 @@ def split_subtitles_readable(text, limit=74):
             for i in range(pos+1,end):
                 if (_SENTENCE_END.search(words[i-1]) and
                     _SENTENCE_START.match(words[i]) and
-                    len(' '.join(words[pos:i]))>=max(30,limit-30)):
+                    len(' '.join(words[pos:i]))>=max(18,int(limit*.6))):
                     boundary=i
             if boundary is not None:end=boundary
             while end>pos+1 and words[end-1].strip('.,!?;:„”«»').casefold() in _DANGLING:
