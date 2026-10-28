@@ -116,10 +116,19 @@ class PlanTests(unittest.TestCase):
         self.assertEqual((p["confirmedCount"],p["placeholderCount"]),(9,10))
         self.assertEqual({x["reason"] for x in r["items"] if x["sourceCode"]=="9974"},
                          {"AUDIO_NOT_FOUND"})
-    def test_conflicting_status_fields_are_blocked(self):
-        self.d["events"][0]["asr"]["status"]="AI_MATCHED"
-        with self.assertRaisesRegex(ValueError,"CONTRADICTORY_ASR_STATUS_STOP"):
-            self.make()
+    def test_legacy_ai_matched_with_review_suggested_is_not_rejected(self):
+        a=self.d["events"][2]["asr"]
+        a["status"]="AI_MATCHED"
+        a["matchStatus"]="REVIEW_SUGGESTED"
+        p,r=self.make()
+        self.assertEqual(p["confirmedCount"],9)
+    def test_fallback_script_timecode_is_never_a_confirmed_cut(self):
+        a=self.d["events"][2]["asr"]
+        a["status"]="FALLBACK_SCRIPT_TC"
+        a["matchStatus"]="REVIEW_WEAK_BOUNDARY"
+        p,r=self.make()
+        self.assertEqual(p["confirmedCount"],8)
+        self.assertNotIn("sourceIn",p["cuts"][2])
     def test_user_stops_without_authorization(self):
         p,_=self.make()
         self.assertFalse(decide(p,p["planSHA256"],CTX["sequenceId"],"STOP")["writeAuthorized"])
