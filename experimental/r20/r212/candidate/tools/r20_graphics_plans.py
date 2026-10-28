@@ -72,7 +72,7 @@ def split_subtitles_readable(text, limit=74):
             penalty=110.0*((count-target)/max(20.0,target))**2
             minimum_readable=min(31.0,target*.75)
             if count<minimum_readable:
-                penalty+=80.0*((minimum_readable-count)/max(1.0,minimum_readable))**2
+                penalty+=120.0*((minimum_readable-count)/max(1.0,minimum_readable))**2
             # A cue should not merge the tail of an entire sentence
             # with a substantial fragment of the next sentence. Keep
             # semantic boundaries whenever balancing can afford it.
