@@ -50,14 +50,18 @@ def build(prior,workflow,output):
     code=replace_once(code,
       "cached=(previous.get('fingerprint')==digest and",
       "cached=(os.environ.get('AIVE_R220_CAPTURE')!='1' and previous.get('fingerprint')==digest and")
-    code=replace_once(code,
-      "                   if plan.get('review'):",
-      """                   # R2.2 capture precedes legacy write and all timeline work.
-                   if os.environ.get('AIVE_R220_CAPTURE')=='1':
-                       from r220_capture import capture
-                       capture(plan,mapping,docx,os.environ['AIVE_R220_MEDIA_JSON'],
-                               os.environ['AIVE_R220_SEQUENCE_ID'])
-                   if plan.get('review'):""")
+    import re
+    anchors=list(re.finditer(r"(?m)^( +)if plan\.get\('review'\):",code))
+    if len(anchors)!=1:
+        raise ValueError("Expected one guarded_write review anchor, found "+str(len(anchors)))
+    pos=anchors[0].start()
+    indent=anchors[0].group(1)
+    patch=(indent+"# R2.2 intercept full plan BEFORE legacy writes.\n"+
+           indent+"if os.environ.get('AIVE_R220_CAPTURE')=='1':\n"+
+           indent+"    from r220_capture import capture\n"+
+           indent+"    capture(plan,mapping,docx,os.environ['AIVE_R220_MEDIA_JSON'],\n"+
+           indent+"            os.environ['AIVE_R220_SEQUENCE_ID'])\n")
+    code=code[:pos]+patch+code[pos:]
     for marker in ("validate_speech_only(plan)","r143_build.is_safe=guarded_safe",
                    "r143_build.write_results=guarded_write",
                    "r143_build.write_results=old_write",
