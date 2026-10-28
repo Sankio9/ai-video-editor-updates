@@ -101,3 +101,10 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [ ] **SYNCED 02:** integrare filter în motorul sincronizat, apoi test LIVE comparativ cu V1/A1, fără schimbarea ancorelor audio; nu aproba Stable înainte de aceasta.
 - [ ] **01 Montaj incident REAL:** captura 28 octombrie 2026 a transmis `OPRIT: 8/17 sincronuri fără potrivire audio sigură`, inclusiv 9931 CUT-01/02, 9980 CUT-04, 9930 CUT-05/06, 9937 CUT-15 și 9974 CUT-16/17. Niciun clip inserat — protecția este corectă, potrivirea încă NU. Unele propoziții DOCX sunt strikethrough (ex. CUT-02), iar ultimul diagnostic complet din Library poate fi anterior testului curent: nu-l substitui pentru raportul actual.
 - [ ] **01 Montaj recuperare:** probe ASR locale + ancore/parafraze real audio pentru aceste 8 CUT-uri, confirmări editorialice pentru eventuale AMB; niciodată fallback TC sau ACCEPT fals. `R2.0.6` scanner Project Panel + retranscriere selectivă sunt candidate mock CI, nu legate încă la butonul Montaj și nu LIVE.
+
+
+### R2.0.7 — Beta publicată 28.10.2026
+- [x] **GitHub prerelease v2.0.7** https://github.com/Sankio9/ai-video-editor-updates/releases/tag/v2.0.7; 13.961 bytes, ZIP SHA-256 `526cad27b2de0afbe3d27d920604a097e39ce9f2208c9dcf60efd9957535e622`. Upgrade strict incremental de la v2.0.5 prin Beta updater, exact 3 fișiere `cep/r20_panel.js`, `tools/r20_graphics_plans.py`, `tools/r207_docx_strike.py`, SHA before pentru cele două fișiere existente, nou helper protejat; **NU Stable**.
+- [x] **CI PASS** run `40645725577`: ZIP precedent v2.0.4 și v2.0.5 verificat SHA, 16 teste DOCX, 4 teste integrative generator, 1 mock CEP, 18 MOGRT mock, guard și 12 teste NameTag. Aceste rezultate nu sunt Premiere LIVE.
+- [ ] **02 LIVE**: instalare Beta și test pe copie proiect, checkbox OFF vs ON, omiterea Strikethrough, păstrarea Italic, V3 readback și rollback; numai independent. Pentru Synced filtrul trebuie integrat, nu e în Beta.
+- [ ] **01 LIVE**: poza 8/17 indică încă eșec matcher, deci nu declara Montaj rezolvat după v2.0.7.
