@@ -1,0 +1,109 @@
+name: Publish R2.2.6 Beta partial R220 Montage subtitles (V3 only)
+on:
+  push:
+    branches: [main]
+    paths: ['release/r226-partial-subs-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r226-v3-beta-only
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify request, protect Stable and avoid duplicate Beta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          assert json.load(open('release/r226-partial-subs-request.json'))=={
+            'source_commit':'2ede72fdb9249ddd39f2c9730badbe8787d9dc5f',
+            'version':'2.2.6',
+            'scope':['cep/r20_panel.js','cep/jsx/r226_partial_subtitles.jsx','tools/r226_partial_subtitles.py'],
+            'policy':'Confirmed R220 CUTs only; 10 placeholders without synced subtitles; estimated cue timing labeled'}
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          ! gh release view v2.2.6 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 2ede72fdb9249ddd39f2c9730badbe8787d9dc5f
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test R226 UI, Montage plan and V3 non-destructive writer
+        run: |
+          set -eu
+          python -m unittest discover -s experimental/r20/r226/tests -p test_*.py -v
+          node experimental/r20/r226/tests/test_r226_jsx.js
+          node experimental/r20/r226/tests/test_r226_panel.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          python -m unittest discover -s experimental/r20/r220/tests -p test_*.py -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+          node --check experimental/r20/r226/cep/r226_partial_subtitles_panel.js
+          python -m py_compile experimental/r20/r226/tools/r226_partial_subtitles.py
+      - name: Build exact SHA pinned 3-file incremental ZIP
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p dist /tmp/r211
+          gh release download v2.1.1 -p AIVE_UPDATE.zip --dir /tmp/r211
+          python experimental/r20/r226/build_r226.py --prior /tmp/r211/AIVE_UPDATE.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import hashlib,json,zipfile,pathlib
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.2.6' and m['format']==1
+            r={x['path']:x for x in m['files']}
+            assert set(r)=={'cep/r20_panel.js','cep/jsx/r226_partial_subtitles.jsx','tools/r226_partial_subtitles.py'}
+            assert r['cep/r20_panel.js']['before_sha256']=='41f321ca4c57c2dde938948c5dafd4189037c377ff00679a3341f0a19d12f5d0'
+            assert all(r[k]['before_sha256'] is None for k in r if k!='cep/r20_panel.js')
+            for p,v in r.items():assert sha(z.read('payload/'+p))==v['sha256']
+            panel=z.read('payload/cep/r20_panel.js')
+            with zipfile.ZipFile('/tmp/r211/AIVE_UPDATE.zip') as old:
+              previous=old.read('payload/cep/r20_panel.js')
+            assert panel.startswith(previous)
+            assert panel.count(b'R2.2.6: one-click R220 partial montage subtitle bridge')==1
+            assert b'Pe montajul existent' in previous
+            assert b'r207OmitStruck' in previous
+            assert b'last_report.json' in panel
+            assert b'R226' in z.read('payload/cep/jsx/r226_partial_subtitles.jsx')
+            assert b'CUT_ALIGNED_ESTIMATED' in z.read('payload/tools/r226_partial_subtitles.py')
+          print('PASS exact panel predecessor, no unrelated file changes, SHA allowlist, UTF8')
+          print('ARCHIVE_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+      - name: Publish Beta only; verify asset name and SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.2.6 dist/AIVE_UPDATE.zip \
+            --target 2ede72fdb9249ddd39f2c9730badbe8787d9dc5f \
+            --title 'AI Video Editor R2.2.6 - Subtitles on partial Montage (BETA TEST)' \
+            --notes 'Allows 02 Pe montajul existent to use R220 verified partial Montage, rather than the old R143 all-or-nothing 19/19 validator. On the approved [AIVE TEST] copy with POST_READBACK and untouched V1/A1/markers, creates V3 MOGRT only for audio-CONFIRMED CUTs. Leaves all uncertain CUTs without falsely synchronized subtitles. Subtitle cue starts/ends INSIDE verified CUT bounds are ESTIMATED, not ASR word-aligned; requires explicit approval and editorial review. DOCX original text, 74-char readable chunks, Reporter Italic, Strikethrough option preserved. V3 must be empty/unlocked. Existing independent 02 and 03/04/05 unchanged. SHA-guarded 3-file incremental release with rollback, Stable v1.9.13 untouched. Premiere LIVE not yet validated.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          python - <<'PY'
+          import hashlib,json,subprocess
+          d=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.2.6']))
+          assert d['prerelease'] and not d['draft'] and len(d['assets'])==1
+          a=d['assets'][0]
+          assert a['name']=='AIVE_UPDATE.zip'
+          expected=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert a['digest']=='sha256:'+expected
+          print('PASS R226 actual public Beta asset name/digest; Stable unchanged',expected)
+          PY
