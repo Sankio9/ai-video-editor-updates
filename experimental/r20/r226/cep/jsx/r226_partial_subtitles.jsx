@@ -104,8 +104,10 @@ $._AIVE_R226_=(function(){
      }
      if(hitsV!==1||hitsA!==1)fail("R220_CLIP_READBACK_CHANGED "+row.cutId);
    }
-   if(Object.keys(usedV).length!==p.confirmedCount||
-      Object.keys(usedA).length!==p.confirmedCount)fail("R220_CLIP_DUPLICATE");
+   var countV=0,countA=0;
+   for(var vk in usedV)if(usedV.hasOwnProperty(vk))countV++;
+   for(var ak in usedA)if(usedA.hasOwnProperty(ak))countA++;
+   if(countV!==p.confirmedCount||countA!==p.confirmedCount)fail("R220_CLIP_DUPLICATE");
    var markerCount=0,first=s.markers&&s.markers.getFirstMarker();
    while(first){if(text(first.name).indexOf("AIVE-R220 ")===0)markerCount++;
      first=s.markers.getNextMarker(first);if(markerCount>2500)fail("MARKER_LOOP");}
