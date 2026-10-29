@@ -1,0 +1,57 @@
+name: Repair bridge release asset filenames without changing bytes
+on:
+  push:
+    branches: [main]
+    paths: ['release/r214-r223-filename-repair.json']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify pinned existing asset SHA and immutable Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          expected={"operation":"rename_new_bridge_release_assets_only",
+                    "r214_sha256":"d2c2be07437d5d9242747947f8a3b7bcd1ba2e367f4f0d2e7cb81f3323e27774",
+                    "r223_sha256":"fc82f6777bacf71bd0153c6d1baa281bc1dd5b083a7c433c11c73a6d723c176f"}
+          assert json.load(open('release/r214-r223-filename-repair.json'))==expected
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = v1.9.13
+      - name: Restore exact AIVE_UPDATE.zip asset name with no changes to payload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for entry in "v2.1.4 AIVE_R214.zip d2c2be07437d5d9242747947f8a3b7bcd1ba2e367f4f0d2e7cb81f3323e27774" "v2.2.3 AIVE_R223.zip fc82f6777bacf71bd0153c6d1baa281bc1dd5b083a7c433c11c73a6d723c176f"; do
+            read -r tag old expected <<< "$entry"
+            dir="/tmp/repair-$tag"
+            mkdir -p "$dir"
+            gh release download "$tag" -p "$old" --dir "$dir"
+            test "$(sha256sum "$dir/$old" | cut -d' ' -f1)" = "$expected"
+            mv "$dir/$old" "$dir/AIVE_UPDATE.zip"
+            gh release upload "$tag" "$dir/AIVE_UPDATE.zip"
+            old_id="$(gh api "repos/$GH_REPO/releases/tags/$tag" --jq ".assets[] | select(.name==\"$old\") | .id")"
+            test -n "$old_id"
+            gh api -X DELETE "repos/$GH_REPO/releases/assets/$old_id" >/dev/null
+            gh api "repos/$GH_REPO/releases/tags/$tag" > "$dir/after.json"
+            python - "$dir/after.json" "$expected" "$tag" <<'PY'
+          import sys,json
+          d=json.load(open(sys.argv[1]))
+          assert d["prerelease"] and d["tag_name"]==sys.argv[3]
+          assert len(d["assets"])==1,d["assets"]
+          assert d["assets"][0]["name"]=="AIVE_UPDATE.zip"
+          assert d["assets"][0]["digest"]=="sha256:"+sys.argv[2]
+          print("PASS SAME ZIP SHA, CORRECT ASSET NAME",sys.argv[3])
+          PY
+          done
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = v1.9.13
+          echo 'PASS Stable unchanged'
