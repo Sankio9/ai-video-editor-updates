@@ -1,0 +1,112 @@
+name: Publish R2.2.4 Beta vo_gap capture hotfix
+on:
+  push:
+    branches: [main]
+    paths: ['release/r224-vo-gap-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r224-vo-gap-single-file
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact request and keep stable unchanged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          assert json.load(open('release/r224-vo-gap-request.json')) == {
+            "source_commit":"f58518682c00c516017efec1c27d37a672651e3c",
+            "version":"2.2.4",
+            "scope":"tools/r220_capture.py only",
+            "reason":"R143 real editorial event kind vo_gap previously blocked safe R220 capture"}
+          PY
+          test "$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.2.4 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: f58518682c00c516017efec1c27d37a672651e3c
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: R143 actual vo_gap and all existing mock regressions
+        run: |
+          set -eu
+          python -m unittest discover -s experimental/r20/r220/tests -p 'test_*.py' -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+          python -m py_compile experimental/r20/r220/tools/r220_capture.py
+      - name: Build single-file SHA-guarded update from exact released baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p dist /tmp/r222 /tmp/r223
+          gh release download v2.2.2 -p AIVE_UPDATE.zip --dir /tmp/r222
+          gh release download v2.2.3 -p AIVE_UPDATE.zip --dir /tmp/r223
+          python - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          old_expected="ec368f7e762047ba14c38cba241368ed392b502bdaef0a8e90aa9fc945f34f33"
+          new_expected="f6264616a0b24f050f8e3f9cc4eeb6d968888dc0b326c1ae569c8ea56f799e0f"
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          name="tools/r220_capture.py"
+          for v in ["r222","r223"]:
+              with zipfile.ZipFile("/tmp/"+v+"/AIVE_UPDATE.zip") as z:
+                  m=json.loads(z.read("manifest.json"))
+                  row=next(r for r in m["files"] if r["path"]==name)
+                  assert row["sha256"]==old_expected,(v,row)
+                  assert sha(z.read("payload/"+name))==old_expected
+          src=pathlib.Path("experimental/r20/r220/tools/r220_capture.py").read_bytes()
+          assert sha(src)==new_expected, "Source bytes differ from the tested patch"
+          assert b'elif kind in ("vo","vo_gap"' in src
+          assert b'elif original_event.get("kind") in ("vo","vo_gap"' in src
+          meta={"format":1,"version":"2.2.4","files":[
+            {"path":name,"before_sha256":old_expected,"sha256":new_expected}
+          ]}
+          path=pathlib.Path("dist/AIVE_UPDATE.zip")
+          with zipfile.ZipFile(path,"w",zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+              z.writestr("manifest.json",json.dumps(meta,indent=2)+"\n")
+              z.writestr("payload/"+name,src)
+          with zipfile.ZipFile(path) as z:
+              assert sorted(z.namelist())==["manifest.json","payload/"+name]
+              assert json.loads(z.read("manifest.json"))==meta
+              assert sha(z.read("payload/"+name))==new_expected
+          print("PASS single-file before/after SHA verified, no Stable/other modules touched")
+          print("UPDATE_ZIP_SHA256",sha(path.read_bytes()))
+          PY
+      - name: Publish prerelease only; preserve v1.9.13 Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          gh release create v2.2.4 dist/AIVE_UPDATE.zip \
+            --target f58518682c00c516017efec1c27d37a672651e3c \
+            --title 'AI Video Editor R2.2.4 - R143 vo_gap compatibility (BETA TEST)' \
+            --notes 'Fixes Premiere-reported R220_UNKNOWN_EDITORIAL_EVENT_KIND:vo_gap. Legacy R143 uses vo_gap for editorial VO spacing. This single-file update modifies only tools/r220_capture.py so vo_gap reserves the correct editorial space and can keep the CUT sequence intact. Unknown kinds still fail closed. Strict before/after SHA256, backup/rollback and protections remain. Beta test only; not validated LIVE in Adobe Premiere. No change to Stable R1.9.13 or modules 02-05.' \
+            --prerelease --latest=false
+          test "$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import json,subprocess,hashlib
+          repo="Sankio9/ai-video-editor-updates"
+          doc=json.loads(subprocess.check_output(["gh","api","repos/"+repo+"/releases/tags/v2.2.4"]))
+          assert doc["prerelease"] and not doc["draft"]
+          assert len(doc["assets"])==1
+          item=doc["assets"][0]
+          assert item["name"]=="AIVE_UPDATE.zip"
+          expected=hashlib.sha256(open("dist/AIVE_UPDATE.zip","rb").read()).hexdigest()
+          assert item["digest"]=="sha256:"+expected,(item["digest"],expected)
+          print("PASS v2.2.4 asset name, exact SHA, prerelease and immutable stable routing")
+          PY
