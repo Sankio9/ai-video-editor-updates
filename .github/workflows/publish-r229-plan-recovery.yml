@@ -1,4 +1,4 @@
-name: Publish R2.2.9 Beta: verified R220 plan and Premiere readback
+name: 'Publish R2.2.9 Beta verified R220 plan and Premiere readback'
 on:
   push:
     branches: [main]
