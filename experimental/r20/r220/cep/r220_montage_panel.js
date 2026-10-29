@@ -120,11 +120,12 @@ function saveReport(state,result){
  var actualC=result.confirmedClipIds||[],marks=result.placeholderMarkerIds||[];
  var expected=plan.cuts.filter(function(v){return v.state==='CONFIRMED';}).map(function(v){return v.cutId;});
  var reserved=plan.cuts.filter(function(v){return v.state==='PLACEHOLDER';}).map(function(v){return v.cutId;});
- if(actual.join('|')!==expected.join('|')||marks.join('|')!==reserved.join('|')||
+ if(actualC.join('|')!==expected.join('|')||marks.join('|')!==reserved.join('|')||
     result.planSHA256!==plan.planSHA256 || result.sequenceId!==plan.identity.sequenceId)
    throw Error('READBACK_CUT_COUNT_MISMATCH');
  report.phase='POST_READBACK';
- report.confirmedInsertedCount=actual.length;
+ report.readbackKind='LIVE_PREMIERE_CONFIRMED';
+ report.confirmedInsertedCount=actualC.length;
  report.placeholderReservedCount=marks.length;
  report.message=marks.length?'Montaj parțial. Au rămas '+marks.length+' sincronuri de verificat.':'Montaj complet confirmat.';
  var target=path.join(ROOT,'Temp','R220','last_report.json'),temp=target+'.tmp';
