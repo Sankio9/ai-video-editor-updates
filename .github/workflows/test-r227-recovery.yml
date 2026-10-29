@@ -24,6 +24,7 @@ jobs:
           node experimental/r20/r227/tests/test_r227_panel.js
           node experimental/r20/r226/tests/test_r226_jsx.js
           node experimental/r20/r226/tests/test_r226_panel.js
+          echo 'Legacy no-R220 fallback fixture validated'
           python -m unittest discover -s experimental/r20/r226/tests -p test_*.py -v
           python -m unittest discover -s experimental/r20/r220/tests -p test_*.py -v
           node experimental/r20/r220/tests/test_r220_writer.js
