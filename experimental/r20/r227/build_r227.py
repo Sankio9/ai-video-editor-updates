@@ -32,7 +32,7 @@ def build(v226,v223,v211,out):
     oldAddon=p[len(base)+1:]
     assert oldAddon.lstrip(b"\r\n").startswith(b"/* R2.2.6:") and oldAddon.endswith(b"\n")
     assert oldAddon.count(b"last_report.json")==1
-    newAddon=(ROOT/"cep/r226_partial_subtitles_panel.js").read_bytes()
+    newAddon=(ROOT.parent/"r226"/"cep/r226_partial_subtitles_panel.js").read_bytes()
     assert b"recoverOrFallback" in newAddon and b"r227_montage_recovery.jsx" in newAddon
     newPanel=base+b"\n"+newAddon+b"\n"
     assert newPanel.count(b"recoverOrFallback")==2
