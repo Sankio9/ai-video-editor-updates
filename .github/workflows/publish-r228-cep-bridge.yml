@@ -1,0 +1,103 @@
+name: Publish R2.2.8 Beta verified CEP event bridge
+on:
+  push:
+    branches: [main]
+    paths: ['release/r228-cep-bridge-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r228-cep-bridge-onefile
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure exact release request, stable frozen, no duplicate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          assert json.load(open('release/r228-cep-bridge-request.json'))=={
+           "source_commit":"21ddd64e4926147cac7b6db8419294053313d33a",
+           "version":"2.2.8","scope":["cep/r20_panel.js"],
+           "policy":"Click capture before legacy, delayed CEP UI, global require fallback, safe R220 active readback"}
+          PY
+          test "$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.2.8 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 21ddd64e4926147cac7b6db8419294053313d33a
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test real-race simulation and full mock path through V3 result
+        run: |
+          set -eu
+          node experimental/r20/r228/tests/test_r228_bootstrap_e2e.js
+          node experimental/r20/r227/tests/test_r227_recovery.js
+          node experimental/r20/r227/tests/test_r227_panel.js
+          node experimental/r20/r226/tests/test_r226_jsx.js
+          python -m unittest discover -s experimental/r20/r226/tests -p test_*.py -v
+          python -m unittest discover -s experimental/r20/r220/tests -p test_*.py -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+      - name: Verify exact previously released SHA and assemble one-file updater
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/aive dist
+          gh release download v2.2.7 -p AIVE_UPDATE.zip --dir /tmp/aive
+          mv /tmp/aive/AIVE_UPDATE.zip /tmp/aive/v227.zip
+          gh release download v2.1.1 -p AIVE_UPDATE.zip --dir /tmp/aive
+          mv /tmp/aive/AIVE_UPDATE.zip /tmp/aive/v211.zip
+          python experimental/r20/r228/build_r228.py --v227 /tmp/aive/v227.zip --v211 /tmp/aive/v211.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,hashlib,json,pathlib
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile("dist/AIVE_UPDATE.zip") as z,zipfile.ZipFile("/tmp/aive/v227.zip") as old:
+            m=json.loads(z.read("manifest.json"));o=json.loads(old.read("manifest.json"))
+            assert m["version"]=="2.2.8" and len(m["files"])==1
+            row=m["files"][0];before=old.read("payload/cep/r20_panel.js")
+            after=z.read("payload/cep/r20_panel.js")
+            assert row["path"]=="cep/r20_panel.js"
+            assert row["before_sha256"]==sha(before)
+            assert row["sha256"]==sha(after)
+            assert b"document.addEventListener('click',onClickCapture,true)" in after
+            assert b"window.cep_node&&window.cep_node.require)||require" in after
+            assert b"r207OmitStruck" in after
+            assert b"oldClick" not in after
+          print('PASS single-file SHA update, deferred capture and fallback, Stable unaffected')
+          print('ARCHIVE_SHA256',sha(pathlib.Path("dist/AIVE_UPDATE.zip").read_bytes()))
+          PY
+      - name: Publish Beta and verify real asset and stable lock
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          gh release create v2.2.8 dist/AIVE_UPDATE.zip \
+            --target 21ddd64e4926147cac7b6db8419294053313d33a \
+            --title 'AI Video Editor R2.2.8 - reliable Subtitle 02 CEP bridge (BETA TEST)' \
+            --notes 'Addresses repeated legacy R143 10/19 subtitle gating after partial R220 Montage despite R2.2.7. Root problem: prior R226/R227 CEP addon could return before the R20 selector/buttons were inserted asynchronously; or could silently return if window.cep_node was absent even though global require was available. R2.2.8 adds a document capture-phase 02 click handler before all old onclick callbacks, tolerates delayed DOM, supports both CEP Node loaders and re-verifies the active R220 plan/markers with read-only Premiere before any V3 MOGRT insertion. R2.2.8 BETA indicator appears in 02 ONLY when the new bridge loads. No fake subtitles for 10 uncertain CUTs; confirmed CUT cue timing remains estimated. V3 requires empty track; preflight, own-MOGRT readback and rollback retained. Single exact SHA-guarded cep/r20_panel.js replacement, no stable 1.9.13 or Montage 01/NameTag 03/Captions 04/VO 05 changes. Automated full 02 flow simulations incl delayed DOM and fallback PASS; not yet tested in user's Premiere installation.' \
+            --prerelease --latest=false
+          test "$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import subprocess,json,hashlib
+          rel=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.2.8']))
+          assert rel['prerelease'] and not rel['draft'] and len(rel['assets'])==1
+          a=rel['assets'][0]
+          expected=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert a['name']=='AIVE_UPDATE.zip' and a['digest']=='sha256:'+expected
+          print('PASS v2.2.8 prerelease digest matches local SHA and Stable remains v1.9.13',expected)
+          PY
