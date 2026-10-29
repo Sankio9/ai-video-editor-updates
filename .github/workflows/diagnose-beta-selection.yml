@@ -1,0 +1,35 @@
+name: Diagnostic Beta selection exact source (temporary)
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/diagnose-beta-selection.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact released assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          for tag in v2.0.2 v2.2.0 v2.2.1 v2.2.2; do
+            mkdir -p "/tmp/$tag"
+            gh release download "$tag" -p AIVE_UPDATE.zip --dir "/tmp/$tag"
+          done
+          python - <<'PY'
+          import zipfile,json
+          for tag in ('v2.0.2','v2.2.0','v2.2.1','v2.2.2'):
+            with zipfile.ZipFile('/tmp/'+tag+'/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              print('RELEASE_MANIFEST',tag,[(r['path'],r['before_sha256'],r['sha256']) for r in m['files']])
+              if tag in ('v2.0.2','v2.2.1'):
+                s=z.read('payload/updater/beta.py').decode('utf8')
+                print('BETA_PYTHON_BEGIN',tag)
+                for i,line in enumerate(s.splitlines(),1):
+                  print('%03d'%i,line.encode('ascii','backslashreplace').decode('ascii'))
+                print('BETA_PYTHON_END',tag)
+          PY
