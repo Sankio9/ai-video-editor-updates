@@ -39,11 +39,90 @@ function callJS(method,args,cb){
  function(err,data){if(err){cb(err);return;}try{cb(null,JSON.parse(data));}
   catch(e){cb(Error('Răspuns Premiere invalid: '+String(data).slice(0,120)));}});
 }
+// Read-only recovery of the already-inserted R220 montage if the previous
+// panel could not persist POST_READBACK (legacy variable actual vs actualC).
+// Never run the legacy 19/19 ASR gate on an R220 timeline.
+function recoverOrFallback(done){
+ var doc=docx();
+ if(!doc||!/\.docx$/i.test(doc)||!fs.existsSync(doc)){
+  done(Error('Selectează DOCX în modulul 00.'));return;
+ }
+ var docSHA=digest(fs.readFileSync(doc));
+ var ext=decodeURIComponent(cep.getSystemPath('extension')).replace(/\\/g,'/');
+ runEval('$.evalFile(new File('+JSON.stringify(ext+'/jsx/r227_montage_recovery.jsx')+'))',
+ function(loading){
+  if(loading){done(loading);return;}
+  runEval('AIVE_R227_RECOVERY.identity()',function(error,raw){
+   if(error){done(error);return;}
+   var seq,plan,analysis;
+   try{
+    seq=JSON.parse(raw);
+    if(!seq.ok||!seq.sequenceId)throw Error('Secvență Premiere inaccesibilă.');
+    var base='montage_'+docSHA.slice(0,12)+'_'+digest(seq.sequenceId).slice(0,12);
+    var prefix=path.join(ROOT,'Temp','R220',base);
+    var planPath=prefix+'.plan.json',reportPath=prefix+'.report.json';
+    if(!fs.existsSync(planPath)){
+     if(seq.r220Markers>0)throw Error('Montaj R220 detectat, dar planul său lipsește. Nu execut R143.');
+     done(null,null,true);return;
+    }
+    if(seq.r220Markers===0)throw Error('Plan R220 găsit, dar markerele lipsesc. Nu execut R143.');
+    plan=JSON.parse(fs.readFileSync(planPath,'utf8'));
+    analysis=JSON.parse(fs.readFileSync(reportPath,'utf8'));
+    if(plan.schema!=='aive-r220-montage-plan-v1'||plan.phase!=='ANALYSIS_ONLY'||
+       !plan.identity||plan.identity.docxSHA256!==docSHA||
+       plan.identity.sequenceId!==seq.sequenceId||
+       analysis.schema!=='aive-r220-missing-cuts-v1'||
+       analysis.phase!=='ANALYSIS_ONLY'||analysis.planSHA256!==plan.planSHA256||
+       JSON.stringify(analysis.identity)!==JSON.stringify(plan.identity))
+       throw Error('Raportul R220 nu corespunde montajului/documentului activ.');
+   }catch(e){done(e);return;}
+   runEval('AIVE_R227_RECOVERY.recover('+JSON.stringify(plan)+')',function(ex,readback){
+    if(ex){done(ex);return;}
+    try{
+     var result=JSON.parse(readback);
+     if(!result.ok)throw Error(result.message||'Readback R220 incomplet.');
+     var expected=plan.cuts.filter(function(x){return x.state==='CONFIRMED';}).map(function(x){return x.cutId;});
+     var marked=plan.cuts.filter(function(x){return x.state==='PLACEHOLDER';}).map(function(x){return x.cutId;});
+     if(result.planSHA256!==plan.planSHA256||result.sequenceId!==plan.identity.sequenceId||
+        result.confirmedClipIds.join('|')!==expected.join('|')||
+        result.placeholderMarkerIds.join('|')!==marked.join('|')||
+        analysis.items.length!==marked.length)
+       throw Error('Montajul recuperat nu corespunde planului R220.');
+     var recovered=JSON.parse(JSON.stringify(analysis));
+     recovered.phase='POST_READBACK';
+     recovered.readbackKind='RECOVERED_FROM_VERIFIED_PREMIERE_TIMELINE';
+     recovered.confirmedInsertedCount=expected.length;
+     recovered.placeholderReservedCount=marked.length;
+     recovered.message='Montaj R220 verificat din timeline: '+expected.length+
+       ' inserate / '+marked.length+' rezervate.';
+     var temp=last+'.tmp';
+     fs.writeFileSync(temp,JSON.stringify(recovered,null,2),'utf8');
+     fs.renameSync(temp,last);
+     if(JSON.parse(fs.readFileSync(last,'utf8')).planSHA256!==plan.planSHA256)
+       throw Error('Raportul R220 recuperat nu a trecut verificarea pe disc.');
+     status('Montaj R220 recuperat prin readback: '+expected.length+
+        ' inserate / '+marked.length+' rezervate. Pregătesc V3...');
+     done(null,recovered,false);
+    }catch(e){done(e);}
+   });
+  });
+ });
+}
 function main(){
  if(busy)return;
+ busy=true;btn.disabled=true;
  var report;
- try{report=currentReport();}catch(e){status('OPRIT: raport R220 corupt: '+e.message);return;}
- if(!report){if(oldClick)oldClick.call(btn);return;}
+ try{report=currentReport();}catch(e){status('OPRIT: raport R220 corupt: '+e.message);reset();return;}
+ if(!report){
+  recoverOrFallback(function(error,recovered,legacy){
+   if(error){status('OPRIT R220 READBACK: '+error.message+' — fără modificări V3.');reset();return;}
+   if(legacy){reset();if(oldClick)oldClick.call(btn);return;}
+   startWithReport(recovered);
+  });return;
+ }
+ startWithReport(report);
+}
+function startWithReport(report){
  var doc=docx();
  try{
   if(!doc||!fs.existsSync(doc)||!/\.docx$/i.test(doc))throw Error('Selectează DOCX în 00.');
