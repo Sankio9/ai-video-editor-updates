@@ -1,0 +1,10 @@
+{
+  "source_commit": "2ede72fdb9249ddd39f2c9730badbe8787d9dc5f",
+  "version": "2.2.6",
+  "scope": [
+    "cep/r20_panel.js",
+    "cep/jsx/r226_partial_subtitles.jsx",
+    "tools/r226_partial_subtitles.py"
+  ],
+  "policy": "Confirmed R220 CUTs only; 10 placeholders without synced subtitles; estimated cue timing labeled"
+}
