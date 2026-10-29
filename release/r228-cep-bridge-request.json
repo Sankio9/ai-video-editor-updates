@@ -1,8 +1,1 @@
-{
-  "source_commit": "21ddd64e4926147cac7b6db8419294053313d33a",
-  "version": "2.2.8",
-  "scope": [
-    "cep/r20_panel.js"
-  ],
-  "policy": "Click capture before legacy, delayed CEP UI, global require fallback, safe R220 active readback"
-}
+{"source_commit":"21ddd64e4926147cac7b6db8419294053313d33a","version":"2.2.8","scope":["cep/r20_panel.js"],"policy":"Click capture before legacy, delayed CEP UI, global require fallback, safe R220 active readback"}
