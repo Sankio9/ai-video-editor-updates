@@ -9,8 +9,11 @@
 // The click listener must be delegated, not tied to a button that may not exist yet.
 if(!window.__adobe_cep__)return;
 var btn=null,mode=null,statusNode=null;
-var requireNode=(window.cep_node&&window.cep_node.require)||null;
-if(!requireNode)return;
+// Match the approved R20 CEP loader: production may expose Node through
+// global require rather than window.cep_node.require. Never silently disable 02.
+var requireNode=null;
+try{requireNode=(window.cep_node&&window.cep_node.require)||require;}catch(e){}
+if(!requireNode){return;}
 var fs=requireNode('fs'),path=requireNode('path'),cp=requireNode('child_process'),
  crypto=requireNode('crypto'),cep=window.__adobe_cep__;
 var ROOT='D:\\AI-Video-Editor',PY=path.join(ROOT,'.venv','Scripts','python.exe');
