@@ -1,0 +1,10 @@
+{
+  "version": "2.2.7",
+  "source_commit": "67c8b22cb4f156472c1258d3fb786786563fa6e9",
+  "scope": [
+    "cep/r193_workflow.js",
+    "cep/r20_panel.js",
+    "cep/jsx/r227_montage_recovery.jsx"
+  ],
+  "policy": "R220 POST_READBACK only after exact sequence clip and marker readback, no re-montage"
+}
