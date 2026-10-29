@@ -126,11 +126,10 @@ const run=async()=>{
     assert.equal(x.click(),false);assert.equal(x.originalCalls(),1);
     assert.equal(x.spawnCalls(),0);
   }],
-  ['Montage metadata missing: no fallback to old 19/19 engine',async()=>{
+  ['Non-R220 sequence preserves approved legacy 02 workflow',async()=>{
     const x=startScenario();
     assert.equal(x.click(),true);await new Promise(r=>setTimeout(r,10));
-    assert.equal(x.originalCalls(),0);assert.equal(x.writerCalls(),0);
-    assert.match(x.status.textContent,/Nu există montaj R220/);
+    assert.equal(x.originalCalls(),1);assert.equal(x.writerCalls(),0);
   }],
   ['Premiere refused verified readback: V3 untouched, button re-enabled',async()=>{
     const x=startScenario({withPlan:true,failRecovery:true});
