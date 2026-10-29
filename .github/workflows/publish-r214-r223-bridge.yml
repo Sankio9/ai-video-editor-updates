@@ -1,0 +1,116 @@
+name: Publish Beta discovery bridge 2.1.4 and Montage 2.2.3
+on:
+  push:
+    branches: [main]
+    paths: ['release/r214-r223-bridge-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-two-stage-beta-bridge
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lock exact audited source SHA and Stable status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          expected={"source_sha":"a1bc724401e292cecedbd799132654498b6a9cfe","bootstrap":"2.1.4","montage":"2.2.3",
+                    "bug":"Installed Beta discovery uses min instead of max; bootstrap must be first update"}
+          assert json.load(open('release/r214-r223-bridge-request.json'))==expected
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          ! gh release view v2.1.4 >/dev/null 2>&1
+          ! gh release view v2.2.3 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: a1bc724401e292cecedbd799132654498b6a9cfe
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build pinned first-step updater fix and second-step original Montage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/r221 /tmp/r222 dist
+          gh release download v2.2.1 -p AIVE_UPDATE.zip --dir /tmp/r221
+          gh release download v2.2.2 -p AIVE_UPDATE.zip --dir /tmp/r222
+          python experimental/r20/r214_bootstrap/build_r214.py --r221 /tmp/r221/AIVE_UPDATE.zip --out dist/AIVE_UPDATE.zip
+          cp dist/AIVE_UPDATE.zip /tmp/AIVE_R214.zip
+          python experimental/r20/r223_montage/build_r223.py --r222 /tmp/r222/AIVE_UPDATE.zip --out dist/AIVE_UPDATE.zip
+          cp dist/AIVE_UPDATE.zip /tmp/AIVE_R223.zip
+      - name: Execute regression tests and signature guards on both artifacts
+        run: |
+          set -eu
+          cp /tmp/AIVE_R214.zip dist/AIVE_UPDATE.zip
+          python -m unittest discover -s experimental/r20/r214_bootstrap/tests -p test_bootstrap.py -v
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_montage_plan.py -v
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_capture.py -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+          python - <<'PY'
+          import zipfile,json,hashlib
+          for path,version,expected in [
+            ('/tmp/AIVE_R214.zip','2.1.4',{'updater/beta.py','cep/aive_updater_beta.js'}),
+            ('/tmp/AIVE_R223.zip','2.2.3',{'cep/r193_workflow.js','tools/r193_pipeline.py',
+               'tools/r220_montage_plan.py','tools/r220_capture.py','tools/r220_montage_runner.py',
+               'cep/jsx/r220_montage_writer.jsx','cep/jsx/r220_media_probe.jsx'}),
+          ]:
+            with zipfile.ZipFile(path) as z:
+              m=json.loads(z.read('manifest.json'))
+              rows={x['path']:x for x in m['files']}
+              assert m['version']==version and m['format']==1 and set(rows)==expected
+              for p,row in rows.items():
+                assert hashlib.sha256(z.read('payload/'+p)).hexdigest()==row['sha256']
+                assert row['before_sha256'] is None or len(row['before_sha256'])==64
+            print('PASS exact SHA allowlist',version)
+          with zipfile.ZipFile('/tmp/AIVE_R214.zip') as z:
+            code=z.read('payload/updater/beta.py').decode('utf8')
+            assert 'max(choices,key=lambda x:x[0])' in code and 'min(choices' not in code
+            assert code.count('ensure_ascii=True')==2
+            open('/tmp/cep_beta_bridge.js','wb').write(z.read('payload/cep/aive_updater_beta.js'))
+          with zipfile.ZipFile('/tmp/AIVE_R223.zip') as z:
+            m=json.loads(z.read('manifest.json'))
+            rows={x['path']:x for x in m['files']}
+            assert rows['cep/r193_workflow.js']['before_sha256']=='b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222'
+            assert b'validate_speech_only(plan)' in z.read('payload/tools/r193_pipeline.py')
+            assert 'updater/beta.py' not in rows
+          PY
+          node --check /tmp/cep_beta_bridge.js
+      - name: Publish v2.1.4 as FIRST step for existing broken min-selection updater
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.1.4 /tmp/AIVE_R214.zip#AIVE_UPDATE.zip \
+            --target a1bc724401e292cecedbd799132654498b6a9cfe \
+            --title 'AI Video Editor R2.1.4 - Beta discovery bridge (TEST)' \
+            --notes 'First required Beta step after R2.1.3 for the old updater. Fixes the confirmed root cause: installed updater/beta.py chooses min(choices), the OLDEST new Beta, so later fixes were never selected. This version changes to max(choices) and preserves exact SHA-256 checks. Also includes the permanent UTF-8 Python subprocess fix. Only two updater files; original stable Montage and graphics unchanged. After installing, select Check Beta again to retrieve newest v2.2.3 with corrected full Montage. SHA guarded rollback. No manual patch needed.' \
+            --prerelease --latest=false
+      - name: Publish v2.2.3 as SECOND step, never change old releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.2.3 /tmp/AIVE_R223.zip#AIVE_UPDATE.zip \
+            --target a1bc724401e292cecedbd799132654498b6a9cfe \
+            --title 'AI Video Editor R2.2.3 - Montage after Beta bridge (TEST)' \
+            --notes 'Second Beta step. Requires R2.1.4 updater bridge to select newest available release. Applies only seven existing Montage R2.2.0 files, with exact before SHA256 for original local cep/r193_workflow.js verified against the user-provided file. Does NOT revert updater/beta.py or aive_updater_beta.js fixed by v2.1.4. Montage: one click, full audio analysis, contextual partial approval, marked placeholder slots in a TEST copy of sequence with [AIVE TEST] and V1/A1 empty. No automatic unsafe TC fallback; original guards, exact SHA and rollback retained. Adobe Premiere LIVE validation still required. Stable v1.9.13 unchanged.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
