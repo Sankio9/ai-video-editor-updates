@@ -1,0 +1,109 @@
+name: Publish R2.2.9 Beta: verified R220 plan and Premiere readback
+on:
+  push:
+    branches: [main]
+    paths: ['release/r229-plan-recovery-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r229-twofile-recovery
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate release request and preserve stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          request=json.load(open('release/r229-plan-recovery-request.json'))
+          assert request=={
+            "version":"2.2.9",
+            "source_commit":"1c8c4c8301c20efa1203f5450896658c4598869b",
+            "scope":["cep/r20_panel.js","tools/r229_validate_r220.py"],
+            "policy":"R220 intrinsic SHA plus live clips+markers, ignore stale sidecar, no timeline changes before preflight"
+          }
+          PY
+          test "$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.2.9 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 1c8c4c8301c20efa1203f5450896658c4598869b
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reproduce true 19 CUT 9/10 plan, stale sidecar and V3 safeguards
+        run: |
+          set -eu
+          python -m unittest discover -s experimental/r20/r229/tests -p 'test_*.py' -v
+          node experimental/r20/r229/tests/test_r229_e2e.js
+          node experimental/r20/r227/tests/test_r227_recovery.js
+          node experimental/r20/r226/tests/test_r226_jsx.js
+          python -m unittest discover -s experimental/r20/r220/tests -p 'test_*.py' -v
+          python -m unittest discover -s experimental/r20/r226/tests -p 'test_*.py' -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+      - name: Build verified Beta from v2.2.8 using real predecessor SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/prior dist
+          gh release download v2.2.8 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v228.zip
+          gh release download v2.1.1 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v211.zip
+          python experimental/r20/r229/build_r229.py --v228 /tmp/prior/v228.zip --v211 /tmp/prior/v211.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import hashlib,zipfile,json,pathlib
+          h=lambda x:hashlib.sha256(x).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z, zipfile.ZipFile('/tmp/prior/v228.zip') as prev:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.2.9' and len(m['files'])==2
+            rows={x['path']:x for x in m['files']}
+            assert set(rows)=={'cep/r20_panel.js','tools/r229_validate_r220.py'}
+            assert rows['tools/r229_validate_r220.py']['before_sha256'] is None
+            assert rows['cep/r20_panel.js']['before_sha256']==h(prev.read('payload/cep/r20_panel.js'))
+            for p,row in rows.items():assert h(z.read('payload/'+p))==row['sha256']
+            panel=z.read('payload/cep/r20_panel.js')
+            assert b'R2.2.9 BETA' in panel and b'R2.2.8 BETA' not in panel
+            assert b'RECOVERY.recover(' in panel and b'R229_RESULT' in panel
+            assert b'R220_PLAN_SHA_CHANGED' in z.read('payload/tools/r229_validate_r220.py')
+          print('PASS two-file allowlist, before/after SHA, no Stable or 01/03/04/05 modifications')
+          print('ARCHIVE_SHA256',h(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+      - name: Publish Beta only, verify uploaded SHA and stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          cat > /tmp/r229_release_notes.md <<'EOF'
+          Fixes the R2.2.8 'Raportul R220 nu corespunde montajului/documentului activ' STOP for partial Montage Subtitle 02. The previously saved R220 analysis report is not a reliable authoritative dependency after an interrupted report-persistence step. R2.2.9 authenticates the original R220 montage plan with the original Python intrinsic SHA-256 algorithm, exact DOCX hash and Premiere sequence ID; it rebuilds the local report from that verified plan only after read-only Premiere verification of all confirmed V1/A1 clip intervals and placeholder markers. If even one clip, marker, SHA, DOCX or sequence mismatches, V3 remains untouched. On success, the existing 02 MOGRT writer can add estimated-within-CUT subtitles on V3 for only confirmed audio segments. No re-montage or source clips altered. Two SHA-guarded files: cep/r20_panel.js and tools/r229_validate_r220.py. Modules 01/03/04/05 and Stable R1.9.13 unchanged. CI passes genuine R220 19 CUT/9 confirmed/10 reserved captures and end-to-end Premiere host simulations; Adobe Premiere LIVE remains unconfirmed.
+          EOF
+          gh release create v2.2.9 dist/AIVE_UPDATE.zip \
+            --target 1c8c4c8301c20efa1203f5450896658c4598869b \
+            --title 'AI Video Editor R2.2.9 - authenticated R220 readback recovery (BETA TEST)' \
+            --notes-file /tmp/r229_release_notes.md \
+            --prerelease --latest=false
+          test "$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import subprocess,json,hashlib
+          rel=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.2.9']))
+          assert rel['prerelease'] and not rel['draft'] and len(rel['assets'])==1
+          asset=rel['assets'][0]
+          expected=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert asset['name']=='AIVE_UPDATE.zip' and asset['digest']=='sha256:'+expected
+          print('PASS real Beta asset SHA256',expected)
+          PY
