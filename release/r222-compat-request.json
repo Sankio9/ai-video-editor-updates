@@ -1,0 +1,6 @@
+{
+  "version": "2.2.2",
+  "source_sha": "0438c669ae738b2bf89c932d1b2cc85cd3a8824b",
+  "user_current_workflow_sha": "b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222",
+  "purpose": "Cumulative 2.2.0 Montage and 2.2.1 UTF8 from exact older R193 panel without bypassing SHA safety"
+}
