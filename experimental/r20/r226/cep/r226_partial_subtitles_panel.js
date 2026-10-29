@@ -58,10 +58,10 @@ function main(){
  status('02: pregătesc numai CUT-urile inserate din montajul R220...');
  var id=report.identity.sequenceId;
  var folder=path.join(ROOT,'Temp','R220');
- var montage=path.join(folder,'montage_'+report.identity.docxSHA256.slice(0,12)+'_'+digest(Buffer.from(id,'utf8')).slice(0,12)+'.plan.json');
+ var montage=path.join(folder,'montage_'+report.identity.docxSHA256.slice(0,12)+'_'+digest(id).slice(0,12)+'.plan.json');
  var outDir=path.join(ROOT,'Temp','R226');try{fs.mkdirSync(outDir,{recursive:true});}
  catch(e){status('OPRIT: '+e.message);reset();return;}
- var planfile=path.join(outDir,'subtitle_'+report.identity.docxSHA256.slice(0,12)+'_'+digest(Buffer.from(id,'utf8')).slice(0,12)+'.json');
+ var planfile=path.join(outDir,'subtitle_'+report.identity.docxSHA256.slice(0,12)+'_'+digest(id).slice(0,12)+'.json');
  var omit=document.getElementById('r207OmitStruck'),
  omitStruck=!!omit&&omit.checked===true,expectedDocSHA=report.identity.docxSHA256;
  var args=['-X','utf8','-u',GENERATOR,'--docx',doc,'--montage',montage,
