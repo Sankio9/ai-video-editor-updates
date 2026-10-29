@@ -29,7 +29,7 @@ jobs:
           python -m unittest discover -s experimental/r20/r220/tests -p test_*.py -v
           node experimental/r20/r220/tests/test_r220_writer.js
           node --check experimental/r20/r226/cep/r226_partial_subtitles_panel.js
-          node --check experimental/r20/r227/cep/jsx/r227_montage_recovery.jsx
+          node -e "new (require('vm').Script)(require('fs').readFileSync('experimental/r20/r227/cep/jsx/r227_montage_recovery.jsx','utf8'))"
       - name: Test exact release baseline and three-file Beta packaging (no upload)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
