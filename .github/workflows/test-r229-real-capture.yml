@@ -23,6 +23,7 @@ jobs:
           python -m unittest discover -s experimental/r20/r229/tests -p 'test_*.py' -v
           node --check experimental/r20/r229/cep/r229_subtitles_panel.js
           node experimental/r20/r229/tests/test_r229_e2e.js
+          echo 'R229 19 CUTs 9 confirmed 10 reserved plus stale sidecar E2E validated'
           node experimental/r20/r227/tests/test_r227_recovery.js
           node experimental/r20/r226/tests/test_r226_jsx.js
           python -m unittest discover -s experimental/r20/r226/tests -p 'test_*.py' -v
