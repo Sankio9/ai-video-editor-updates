@@ -1,0 +1,54 @@
+name: R2.2.9 test actual R220 capture, stale report, full V3 (no release)
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r229-real-capture.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test genuine R220 capture, corrupt sidecar, strong SHA, V3 E2E
+        run: |
+          set -eu
+          python -m unittest discover -s experimental/r20/r229/tests -p 'test_*.py' -v
+          node --check experimental/r20/r229/cep/r229_subtitles_panel.js
+          node experimental/r20/r229/tests/test_r229_e2e.js
+          node experimental/r20/r227/tests/test_r227_recovery.js
+          node experimental/r20/r226/tests/test_r226_jsx.js
+          python -m unittest discover -s experimental/r20/r226/tests -p 'test_*.py' -v
+          python -m unittest discover -s experimental/r20/r220/tests -p 'test_*.py' -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+      - name: Verify exact R2.2.8 release SHA, build only two files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/base dist
+          gh release download v2.2.8 -p AIVE_UPDATE.zip --dir /tmp/base
+          mv /tmp/base/AIVE_UPDATE.zip /tmp/base/v228.zip
+          gh release download v2.1.1 -p AIVE_UPDATE.zip --dir /tmp/base
+          mv /tmp/base/AIVE_UPDATE.zip /tmp/base/v211.zip
+          python experimental/r20/r229/build_r229.py --v228 /tmp/base/v228.zip --v211 /tmp/base/v211.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,hashlib,json
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            m=json.loads(z.read('manifest.json'));files=m['files']
+            assert set(r['path'] for r in files)=={'cep/r20_panel.js','tools/r229_validate_r220.py'}
+            panel=z.read('payload/cep/r20_panel.js')
+            assert b'R2.2.9 BETA' in panel
+            assert b'oldClick' not in panel
+            assert b'RECOVERY.recover(' in panel
+            assert b'R220_PLAN_SHA_CHANGED' in z.read('payload/tools/r229_validate_r220.py')
+          print('PASS release package scope & SHA')
+          PY
