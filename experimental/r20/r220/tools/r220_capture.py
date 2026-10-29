@@ -34,9 +34,9 @@ def _media_inventory(source, mapping):
     return result
 
 def _duration_voice(ev):
-    # R143 voiceover card: no spoken source; reserve editorial 5-8 seconds.
+    # R143 VO card / vo_gap: editorial duration reserved, never source IN/OUT.
     # Honor explicit valid duration only if the legacy plan exposes it.
-    for k in ("durationSeconds","estimatedDuration","duration"):
+    for k in ("durationSeconds","estimatedDuration","duration","estimatedSeconds","seconds"):
         x=ev.get(k)
         if _finite(x) and 1<=x<=45:return round(x,3)
     return 7.
@@ -74,7 +74,7 @@ def capture(plan,mapping,docx,media_json,sequence_id):
                      ("endScore",MIN_BOUNDARY_SCORE),
                      ("fullTextScore",MIN_FULL_TEXT_SCORE)))):
                 passed.append(cid)
-        elif kind in ("vo","voice","voiceover","vo_card","card","narration"):
+        elif kind in ("vo","vo_gap","voice","voiceover","vo_card","card","narration"):
             pass
         else:
             raise ValueError("R220_UNKNOWN_EDITORIAL_EVENT_KIND:"+str(kind))
@@ -93,13 +93,15 @@ def capture(plan,mapping,docx,media_json,sequence_id):
     for original_event in original:
         if original_event.get("kind")=="cut":
             row=by_id[str(original_event["id"])]
-        else:
+        elif original_event.get("kind") in ("vo","vo_gap","voice","voiceover","vo_card","card","narration"):
             voice_index+=1
             seconds=_duration_voice(original_event)
             row={"cutId":"VO-%03d"%voice_index,"sourceCode":None,
                  "sourceName":None,"state":"VO_RESERVE",
                  "durationSeconds":seconds,"durationKind":"VO_EDITORIAL_RESERVED",
                  "estimated":True}
+        else:
+            raise ValueError("R220_UNKNOWN_EDITORIAL_EVENT_KIND:"+str(original_event.get("kind")))
         length=row["durationSeconds"]
         row["timelineStart"]=round(cursor,3)
         row["timelineEnd"]=round(cursor+length,3)
