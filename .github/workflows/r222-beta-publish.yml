@@ -1,0 +1,98 @@
+name: Publish R2.2.2 cumulative Beta compatible with R1.9.3 workflow
+on:
+  push:
+    branches: [main]
+    paths: ['release/r222-compat-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r222-compat-beta
+  cancel-in-progress: false
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify explicit source SHA, user's exact workflow hash and frozen Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          expected={"version":"2.2.2","source_sha":"0438c669ae738b2bf89c932d1b2cc85cd3a8824b",
+            "user_current_workflow_sha":"b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222",
+            "purpose":"Cumulative 2.2.0 Montage and 2.2.1 UTF8 from exact older R193 panel without bypassing SHA safety"}
+          assert json.load(open('release/r222-compat-request.json'))==expected
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          ! gh release view v2.2.2 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 0438c669ae738b2bf89c932d1b2cc85cd3a8824b
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download exact SHA-pinned v2.2.0 and v2.2.1 public release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/r220 /tmp/r221 dist
+          gh release download v2.2.0 -p AIVE_UPDATE.zip --dir /tmp/r220
+          gh release download v2.2.1 -p AIVE_UPDATE.zip --dir /tmp/r221
+          python experimental/r20/r222/build_r222.py --r220 /tmp/r220/AIVE_UPDATE.zip --r221 /tmp/r221/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+      - name: Verify exact before SHA, all existing features and all 9 file hashes
+        run: |
+          python - <<'PY'
+          import zipfile,json,hashlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              rows={a['path']:a for a in m['files']}
+              assert m['version']=='2.2.2' and m['format']==1 and len(rows)==9
+              assert rows['cep/r193_workflow.js']['before_sha256']=='b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222'
+              assert rows['cep/r193_workflow.js']['sha256']=='976dd244a1537d9b8999867a88fd5a4ee1fd870d35e469d0007f57b6e7756ae5'
+              for p,row in rows.items():
+                  assert hashlib.sha256(z.read('payload/'+p)).hexdigest()==row['sha256']
+                  assert row.get('before_sha256') is None or len(row['before_sha256'])==64
+              assert b'window.AIVE_R220_UI.start()' in z.read('payload/cep/r193_workflow.js')
+              assert b'PYTHONUTF8' in z.read('payload/cep/aive_updater_beta.js')
+              assert b'ensure_ascii=True' in z.read('payload/updater/beta.py')
+              assert b'validate_speech_only(plan)' in z.read('payload/tools/r193_pipeline.py')
+              assert set(rows)=={
+                'cep/r193_workflow.js','tools/r193_pipeline.py',
+                'tools/r220_montage_plan.py','tools/r220_capture.py',
+                'tools/r220_montage_runner.py',
+                'cep/jsx/r220_montage_writer.jsx','cep/jsx/r220_media_probe.jsx',
+                'updater/beta.py','cep/aive_updater_beta.js'}
+              for x in ('cep/r193_workflow.js','cep/aive_updater_beta.js'):
+                  open('/tmp/'+x.replace('/','_'),'wb').write(z.read('payload/'+x))
+          print('PASS: nine SHA verified assets, original R1.9.3 workflow baseline, no security bypass')
+          PY
+          node --check /tmp/cep_r193_workflow.js
+          node --check /tmp/cep_aive_updater_beta.js
+      - name: Regress Montage 01 and rollback against mocked Premiere
+        run: |
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_montage_plan.py -v
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_capture.py -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+      - name: Publish one cumulative Beta, preserve Stable and rollback
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.2.2 dist/AIVE_UPDATE.zip \
+            --target 0438c669ae738b2bf89c932d1b2cc85cd3a8824b \
+            --title 'AI Video Editor R2.2.2 - Compatible Montage Beta updater' \
+            --notes 'BETA compatibility update for a verified older CEP r193_workflow.js local SHA b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222. Replaces the incompatible v2.2.0 prior-SHA condition with the exact installed file SHA; DOES NOT disable checksum validation. Cumulative package includes R2.2.0 single-click Montage analysis and test-only placeholder insertion, plus R2.2.1 permanent UTF-8 updater fix. Exact SHA manifest and automatic backup/rollback retained. No subtitles/NameTag/VO module modifications. Run via in-panel Beta updater on a duplicate sequence with [AIVE TEST] and V1/A1 empty. If another local-version mismatch occurs for a DIFFERENT file, report that filename so it can be verified, not bypassed. CI tests passed; Adobe Premiere LIVE insertion not verified. Stable v1.9.13 unchanged.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
