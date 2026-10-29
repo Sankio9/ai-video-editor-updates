@@ -1,0 +1,6 @@
+{
+  "source_sha": "a1bc724401e292cecedbd799132654498b6a9cfe",
+  "bootstrap": "2.1.4",
+  "montage": "2.2.3",
+  "bug": "Installed Beta discovery uses min instead of max; bootstrap must be first update"
+}
