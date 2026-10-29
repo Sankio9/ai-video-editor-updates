@@ -125,8 +125,14 @@ function main(){
  recoverOrFallback(function(error,recovered,legacy){
    if(error){status('OPRIT R220 READBACK: '+error.message+' — fără modificări V3.');reset();return;}
    if(legacy){
-     status('Nu există montaj R220 în această secvență. Folosește modul independent sau un montaj validat.');
-     reset();return;
+     // Preserve original, APPROVED legacy synced workflow only when both
+     // R220 plan and R220 markers are absent. Call onclick directly to avoid
+     // recapturing a synthetic click and keep its existing safety preflight.
+     reset();
+     var b=currentButton();
+     if(b&&typeof b.onclick==='function')b.onclick.call(b);
+     else status('Nu există montaj R220 și handlerul legacy 02 lipsește.');
+     return;
    }
    startWithReport(recovered);
  });
