@@ -3,7 +3,8 @@
 const assert=require('assert');
 const fs=require('fs'),vm=require('vm'),path=require('path');
 const source=fs.readFileSync(path.join(__dirname,'../cep/jsx/r220_montage_writer.jsx'),'utf8');
-function mock(){
+function mock(opts={}){
+
   const video=[],audio=[],markers=[],events=[];
   function collection(items){return new Proxy(items,{get(target,key){
     if(key==='numItems')return target.length;
@@ -21,13 +22,24 @@ function mock(){
     getNextMarker(m){return markers[markers.indexOf(m)+1]||null;}
   };}
   const item={
-    name:'Original_9981.mov',nodeId:'NODE_9981',_in:0,_out:100,
+    name:'Original_9981.mov',nodeId:'NODE_9981',_in:opts.originalIn||0,_out:opts.originalOut||100,
     getInPoint(){return {seconds:this._in}},
     getOutPoint(){return {seconds:this._out}},
-    setInPoint(n){this._in=n;events.push('setIn');return 0},
-    setOutPoint(n){this._out=n;events.push('setOut');return 0},
-    clearInPoint(){this._in=0;return 0},
-    clearOutPoint(){this._out=100;return 0},
+    setInPoint(n){
+      if(typeof n!=='string' || !/^\\d+$/.test(n))return -1;
+      const value=Number(n)/254016000000;
+      if(value>=this._out)return -1;
+      if(opts.failIn && Math.abs(value-20)<.1)return -1;
+      this._in=value;events.push('setIn');return opts.returnUndefined?undefined:0;
+    },
+    setOutPoint(n){
+      if(typeof n!=='string' || !/^\\d+$/.test(n))return -1;
+      const value=Number(n)/254016000000;
+      if(value<=this._in)return -1;
+      this._out=value;events.push('setOut');return opts.returnUndefined?undefined:0;
+    },
+    clearInPoint(){this._in=0;events.push('clearIn');return 0},
+    clearOutPoint(){this._out=100;events.push('clearOut');return 0},
     isOffline(){return false},isSequence(){return false},
   };
   const v={clips:collection(video),isLocked(){return false}},
@@ -123,4 +135,29 @@ function mock(){
  assert.equal(JSON.parse(m.api.commit(m.plan,'CONTINUE_WITH_PLACEHOLDERS',m.plan.planSHA256)).ok,true);
  assert.throws(()=>m.api.preflight(m.plan,'CONTINUE_WITH_PLACEHOLDERS'),/V1_A1_NOT_EMPTY/);
 })();
-console.log('PASS R2.2: 8 isolated JSX Premiere mock scenarios, explicit approval, readback, rollback, copy protection');
+
+// Premiere 2025 live reports SET_IN_FAILED CUT-03 (first confirmed CUT).
+// Assert tick-string setters, original source trims, and readback, not just
+// a setter return code. A failed readback must prevent any timeline write.
+(function testRealPremiereTickStringsAndUndefinedSetterReturn(){
+ const m=mock({returnUndefined:true,originalOut:11});
+ const result=JSON.parse(m.api.commit(m.plan,'CONTINUE_WITH_PLACEHOLDERS',m.plan.planSHA256));
+ assert.equal(result.ok,true,JSON.stringify(result));
+ assert.equal(m.item._in,0);
+ assert.equal(m.item._out,11,'restore original source out after a later cut');
+ assert.equal(m.video.length,2);
+ assert.equal(m.audio.length,2);
+})();
+(function testRealSetInFailureIsNotMistakenForSuccess(){
+ const m=mock({failIn:true});
+ const result=JSON.parse(m.api.commit(m.plan,'CONTINUE_WITH_PLACEHOLDERS',m.plan.planSHA256));
+ assert.equal(result.ok,false,JSON.stringify(result));
+ assert.match(result.error,/SET_IN_FAILED CUT-03/);
+ assert.equal(m.video.length,0);
+ assert.equal(m.audio.length,0);
+ assert.equal(m.markers.length,0);
+ assert.equal(m.item._in,0);
+ assert.equal(m.item._out,100);
+ assert.equal(result.rollbackIssues.length,0);
+})();
+console.log('PASS R2.2.5: 10 Premiere API mock tests, tick-string In/Out, source restoration, safe abort/readback');
