@@ -100,22 +100,56 @@ var AIVE_R220 = (function(){
     }
     return matches.length===1?matches[0]:null;
   }
+  // CEP/ExtendScript supports tick strings for ProjectItem setters. A numeric
+  // number is interpreted as seconds on some builds, differently on others.
+  // Do not trust setter return values alone; verify the requested media points.
+  var TICKS_PER_SECOND=254016000000;
+  function tickSeconds(seconds){
+    if(!number(seconds)||seconds<0||seconds>20000)fail("SOURCE_TIME_INVALID");
+    return String(Math.round(seconds*TICKS_PER_SECOND));
+  }
+  function readPoint(item,which){
+    var v=(which==="in"?item.getInPoint():item.getOutPoint());
+    return v&&number(v.seconds)?v.seconds:null;
+  }
+  function writePoint(item,which,seconds,context){
+    var answer=(which==="in"?
+        item.setInPoint(tickSeconds(seconds),4):
+        item.setOutPoint(tickSeconds(seconds),4));
+    var found=readPoint(item,which);
+    if(found===null||!close(found,seconds)){
+      fail("SET_"+(which==="in"?"IN":"OUT")+"_FAILED "+context+
+           " expected="+seconds+" readback="+found+" result="+String(answer));
+    }
+  }
+  function clearBounds(item,context){
+    // Clear potentially pre-trimmed source first, so a later requested IN
+    // cannot be rejected for lying beyond an earlier OUT point.
+    item.clearInPoint();
+    item.clearOutPoint();
+    var a=readPoint(item,"in");
+    if(a!==null&&a>0.08)fail("CLEAR_IN_FAILED "+context+" actual="+a);
+  }
   function restoreItem(item,oldIn,oldOut){
     try {
-      if(oldIn!==null)item.setInPoint(oldIn,4);
-      else item.clearInPoint();
-      if(oldOut!==null)item.setOutPoint(oldOut,4);
-      else item.clearOutPoint();
+      clearBounds(item,"restore");
+      if(oldOut!==null&&oldOut>=0)writePoint(item,"out",oldOut,"restore");
+      if(oldIn!==null&&oldIn>=0)writePoint(item,"in",oldIn,"restore");
+      if(oldIn!==null&&oldIn>=0&&!close(readPoint(item,"in"),oldIn))
+         fail("RESTORE_IN_MISMATCH");
+      if(oldOut!==null&&oldOut>=0&&!close(readPoint(item,"out"),oldOut))
+         fail("RESTORE_OUT_MISMATCH");
     }catch(e){fail("SOURCE_IN_OUT_RESTORE_FAILED "+String(e));}
   }
   function insert(s,item,c,added){
     // Source In/Out is modified temporarily; restore it in all paths.
-    var previousIn=item.getInPoint(),previousOut=item.getOutPoint();
-    var oldIn=previousIn&&number(previousIn.seconds)?previousIn.seconds:null;
-    var oldOut=previousOut&&number(previousOut.seconds)?previousOut.seconds:null;
+    var oldIn=readPoint(item,"in"),oldOut=readPoint(item,"out");
     try{
-      if(item.setInPoint(c.sourceIn,4)!==0)fail("SET_IN_FAILED "+c.cutId);
-      if(item.setOutPoint(c.sourceOut,4)!==0)fail("SET_OUT_FAILED "+c.cutId);
+      clearBounds(item,c.cutId);
+      writePoint(item,"out",c.sourceOut,c.cutId);
+      writePoint(item,"in",c.sourceIn,c.cutId);
+      if(!close(readPoint(item,"out"),c.sourceOut))
+         fail("SET_OUT_READBACK_CHANGED "+c.cutId);
       if(s.overwriteClip(item,c.timelineStart,0,0)!==true)
          fail("OVERWRITE_FAILED "+c.cutId);
       // Capture inserted objects before any readback/restore failure.
