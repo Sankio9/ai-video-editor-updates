@@ -1,0 +1,6 @@
+{
+  "source_commit": "f58518682c00c516017efec1c27d37a672651e3c",
+  "version": "2.2.4",
+  "scope": "tools/r220_capture.py only",
+  "reason": "R143 real editorial event kind vo_gap previously blocked safe R220 capture"
+}
