@@ -30,7 +30,7 @@ def build(v226,v223,v211,out):
     p=previous["cep/r20_panel.js"];base=base211["cep/r20_panel.js"]
     assert p.startswith(base+b"\n"),"2.2.6 panel not derived from pinned 2.1.1"
     oldAddon=p[len(base)+1:]
-    assert oldAddon.startswith(b"/* R2.2.6:") and oldAddon.endswith(b"\n")
+    assert oldAddon.lstrip(b"\r\n").startswith(b"/* R2.2.6:") and oldAddon.endswith(b"\n")
     assert oldAddon.count(b"last_report.json")==1
     newAddon=(ROOT/"cep/r226_partial_subtitles_panel.js").read_bytes()
     assert b"recoverOrFallback" in newAddon and b"r227_montage_recovery.jsx" in newAddon
