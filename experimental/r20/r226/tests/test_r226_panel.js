@@ -14,7 +14,15 @@ function start(report,docHash){
      return obj;}};
  const req=x=>({'fs':fss,'path':require('path').win32,'crypto':require('crypto'),
  'child_process':{spawn(){throw Error('Should never spawn during stale/missing report');}}})[x];
- const w={cep_node:{require:req},__adobe_cep__:{},
+ const w={cep_node:{require:req},__adobe_cep__:{
+   getSystemPath(){return 'D:\\AI-Video-Editor';},
+   evalScript(code,cb){
+     if(code.includes('$.evalFile'))cb('true');
+     else if(code.includes('AIVE_R227_RECOVERY.identity()'))
+       cb(JSON.stringify({ok:true,sequenceId:'SEQ_OLD',name:'Legacy',r220Markers:0}));
+     else throw Error('Unexpected probe: '+code);
+   }
+ },
    AIVE_CONTEXT_R184:{getDocx(){return doc;}}};
  const ctx={document:{getElementById:key=>elements[key]||null},window:w,
    Object,Buffer,process:{env:{}},JSON,Error,String};
