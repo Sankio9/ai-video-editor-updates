@@ -1,0 +1,9 @@
+{
+  "version": "2.2.9",
+  "source_commit": "1c8c4c8301c20efa1203f5450896658c4598869b",
+  "scope": [
+    "cep/r20_panel.js",
+    "tools/r229_validate_r220.py"
+  ],
+  "policy": "R220 intrinsic SHA plus live clips+markers, ignore stale sidecar, no timeline changes before preflight"
+}
