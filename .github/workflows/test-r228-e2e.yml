@@ -28,3 +28,31 @@ jobs:
           python -m unittest discover -s experimental/r20/r226/tests -p test_*.py -v
           python -m unittest discover -s experimental/r20/r220/tests -p test_*.py -v
           node experimental/r20/r220/tests/test_r220_writer.js
+      - name: Validate pinned v2.2.7 panel and produce verified R2.2.8 one-file preview
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/aive dist
+          gh release download v2.2.7 -p AIVE_UPDATE.zip --dir /tmp/aive
+          mv /tmp/aive/AIVE_UPDATE.zip /tmp/aive/v227.zip
+          gh release download v2.1.1 -p AIVE_UPDATE.zip --dir /tmp/aive
+          mv /tmp/aive/AIVE_UPDATE.zip /tmp/aive/v211.zip
+          python experimental/r20/r228/build_r228.py --v227 /tmp/aive/v227.zip --v211 /tmp/aive/v211.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import hashlib,zipfile,json,pathlib
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile("dist/AIVE_UPDATE.zip") as z:
+            p=json.loads(z.read("manifest.json"))
+            assert p["version"]=="2.2.8" and len(p["files"])==1
+            row=p["files"][0]
+            assert row["path"]=="cep/r20_panel.js"
+            data=z.read("payload/cep/r20_panel.js")
+            assert sha(data)==row["sha256"]
+            assert b"onClickCapture" in data
+            assert b"oldClick" not in data
+            assert b"R2.2.8 BETA" in data
+            assert b"r207OmitStruck" in data
+            print("PASS R2.2.8 exact release baseline, single-file content, SHA and approved R2.1.1 prefix")
+          PY
