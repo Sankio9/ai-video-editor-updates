@@ -22,6 +22,7 @@ jobs:
           set -eu
           node --check experimental/r20/r228/cep/r228_subtitles_panel.js
           node experimental/r20/r228/tests/test_r228_bootstrap_e2e.js
+          echo 'CEP global require / asynchronous DOM / captured click tested'
           node experimental/r20/r227/tests/test_r227_recovery.js
           node experimental/r20/r227/tests/test_r227_panel.js
           node experimental/r20/r226/tests/test_r226_jsx.js
