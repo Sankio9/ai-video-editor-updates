@@ -26,14 +26,14 @@ function mock(opts={}){
     getInPoint(){return {seconds:this._in}},
     getOutPoint(){return {seconds:this._out}},
     setInPoint(n){
-      if(typeof n!=='string' || !/^\\d+$/.test(n))return -1;
+      if(typeof n!=='string' || !/^\d+$/.test(n))return -1;
       const value=Number(n)/254016000000;
       if(value>=this._out)return -1;
       if(opts.failIn && Math.abs(value-20)<.1)return -1;
       this._in=value;events.push('setIn');return opts.returnUndefined?undefined:0;
     },
     setOutPoint(n){
-      if(typeof n!=='string' || !/^\\d+$/.test(n))return -1;
+      if(typeof n!=='string' || !/^\d+$/.test(n))return -1;
       const value=Number(n)/254016000000;
       if(value<=this._in)return -1;
       this._out=value;events.push('setOut');return opts.returnUndefined?undefined:0;
