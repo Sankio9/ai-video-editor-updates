@@ -2,7 +2,7 @@
 const assert=require('assert'),crypto=require('crypto'),path=require('path').win32,EventEmitter=require('events'),fs=require('fs'),vm=require('vm');
 const code=fs.readFileSync(require('path').join(__dirname,'../cep/r228_subtitles_panel.js'),'utf8');
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
-function startScenario({late=false,withPlan=false,legacyAssignedLater=false,mode='synced',failRecovery=false}={}){
+function startScenario({late=false,withPlan=false,legacyAssignedLater=false,mode='synced',failRecovery=false,noCepNode=false}={}){
  const document={listeners:{},body:{},elements:{},header:{textContent:'R1.5.15'},
   addEventListener(type,fn,capture){assert.equal(type,'click');assert.equal(capture,true);
     this.listeners.click=fn;},
@@ -78,11 +78,11 @@ function startScenario({late=false,withPlan=false,legacyAssignedLater=false,mode
      throw Error('UNEXPECTED_EVAL '+script.slice(0,80));
    }};
  const req=name=>({'fs':mockfs,'path':path,'crypto':crypto,'child_process':{spawn}})[name];
- const win={cep_node:{require:req},__adobe_cep__:cep,
+ const win={cep_node:noCepNode?undefined:{require:req},__adobe_cep__:cep,
    AIVE_CONTEXT_R184:{getDocx(){return doc}},confirm(){return true;}};
  const ctx={window:win,document,console,MutationObserver:class{
      observe(){/* reactive DOM is delivered on actual click via delegation */}},
-     JSON,String,Number,Error,Object,Buffer,process:{env:{}},decodeURIComponent};
+     JSON,String,Number,Error,Object,Buffer,process:{env:{}},decodeURIComponent,require:req};
  vm.runInNewContext(code,ctx,{timeout:2500});
  assert.equal(typeof document.listeners.click,'function','R228 must capture events even before R20 selector exists');
  if(late)place();
@@ -120,6 +120,14 @@ const run=async()=>{
     await new Promise(r=>setTimeout(r,30));
     assert.equal(x.originalCalls(),0);assert.equal(x.writerCalls(),1);
     assert.match(x.status.textContent,/1 CUT-uri fără audio confirmat/);
+  }],
+  ['global require fallback works when window.cep_node is absent',async()=>{
+    const x=startScenario({late:true,withPlan:true,noCepNode:true,legacyAssignedLater:true});
+    assert.equal(x.click(),true);
+    await new Promise(r=>setTimeout(r,30));
+    assert.equal(x.writerCalls(),1);
+    assert.equal(x.originalCalls(),0);
+    assert.match(x.status.textContent,/PREMIERE READBACK/);
   }],
   ['independent 02 preserves original handler',async()=>{
     const x=startScenario({late:true,mode:'independent'});
