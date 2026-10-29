@@ -1,0 +1,44 @@
+name: Audit R2.2 live sequence gate exact released source (temporary)
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/diagnose-r222-sequence-gate.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect signed release source at guard and entrypoints
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for tag in v2.2.2 v2.2.3; do
+            mkdir -p "/tmp/$tag"
+            gh release download "$tag" -p AIVE_UPDATE.zip --dir "/tmp/$tag"
+          done
+          python - <<'PY'
+          import zipfile,hashlib,re
+          for tag in ('v2.2.2','v2.2.3'):
+            z=zipfile.ZipFile('/tmp/'+tag+'/AIVE_UPDATE.zip')
+            print('\n=== RELEASE',tag,'===')
+            for name in ('cep/r193_workflow.js','cep/jsx/r220_media_probe.jsx','tools/r220_montage_runner.py'):
+              key='payload/'+name
+              if key not in z.namelist(): continue
+              b=z.read(key);txt=b.decode('utf8')
+              lines=txt.splitlines()
+              print('\nFILE',name,'bytes',len(b),'SHA256',hashlib.sha256(b).hexdigest(),'lines',len(lines))
+              patterns=[r'COPIE',r'AIVE TEST',r'OPRIT',r'activeSequence',r'getActiveSequence',r'sequenceID',r'sequenceName',r'seqName',r'montage',r'monta',r'projectName',r'verify',r'V1/A1',r'getActive',r'mediaProbe',r'R220']
+              hits=[i for i,line in enumerate(lines) if any(re.search(p,line,re.I) for p in patterns)]
+              if name.endswith('r193_workflow.js'):
+                for i in hits[:140]:
+                  lo=max(0,i-2);hi=min(len(lines),i+3)
+                  print(' '.join('%d:%s'%(j+1,lines[j].encode('ascii','backslashreplace').decode('ascii')) for j in range(lo,hi)))
+              else:
+                for i in hits[:40]:
+                  lo=max(0,i-1);hi=min(len(lines),i+2)
+                  print(' '.join('%d:%s'%(j+1,lines[j].encode('ascii','backslashreplace').decode('ascii')) for j in range(lo,hi)))
+          PY
