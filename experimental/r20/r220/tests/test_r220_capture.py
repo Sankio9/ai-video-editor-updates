@@ -64,6 +64,33 @@ class CaptureTests(unittest.TestCase):
     self.assertNotIn("sourceIn",p["cuts"][2])
     self.assertEqual(r["items"][0]["reason"],"ASR_WEAK_BOUNDARY")
     self.assertEqual(r["phase"],"ANALYSIS_ONLY")
+ def test_real_r143_vo_gap_is_reserved_not_misclassified(self):
+    plan=make_plan(matched=False)
+    plan["events"][1]["kind"]="vo_gap"
+    plan["events"][1]["durationSeconds"]=6.5
+    d,p,r=self.analyze(plan)
+    self.assertEqual((p["totalCuts"],p["voReserveCount"],p["confirmedCount"],p["placeholderCount"]),(2,1,1,1))
+    self.assertEqual([x["state"] for x in p["cuts"]],["CONFIRMED","VO_RESERVE","PLACEHOLDER"])
+    self.assertEqual(p["cuts"][1]["durationSeconds"],6.5)
+    self.assertEqual(p["cuts"][1]["timelineStart"],5.)
+    self.assertEqual(p["cuts"][2]["timelineStart"],11.5)
+    self.assertNotIn("sourceIn",p["cuts"][1])
+    self.assertNotIn("sourceOut",p["cuts"][1])
+    self.assertEqual(len(r["items"]),1)
+ def test_r143_vo_gap_default_estimate_preserved(self):
+    plan=make_plan(matched=True)
+    plan["events"][1]["kind"]="vo_gap"
+    d,p,r=self.analyze(plan)
+    self.assertEqual(p["cuts"][1]["durationSeconds"],7.)
+    self.assertEqual(p["voReserveCount"],1)
+    self.assertFalse(p["approvalRequired"])
+ def test_mixed_vo_and_vo_gap_do_not_disappear(self):
+    plan=make_plan(matched=False)
+    plan["events"].insert(2,{"kind":"vo_gap","duration":8.})
+    d,p,r=self.analyze(plan)
+    self.assertEqual(p["voReserveCount"],2)
+    self.assertEqual([x["cutId"] for x in p["cuts"]],["CUT-01","VO-001","VO-002","CUT-02"])
+    self.assertEqual(p["cuts"][3]["timelineStart"],20.)
  def test_zero_problems_hides_approval(self):
     d,p,r=self.analyze(make_plan())
     self.assertFalse(p["approvalRequired"])
