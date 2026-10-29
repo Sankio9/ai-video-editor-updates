@@ -1,0 +1,112 @@
+name: Publish R2.2.5 Beta Premiere source IN/OUT readback hotfix
+on:
+  push:
+    branches: [main]
+    paths: ['release/r225-in-out-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r225-io-onefile
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin request, stable and release uniqueness
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          assert json.load(open('release/r225-in-out-request.json')) == {
+           "source_commit":"5a2b4122e6dc15ccdaf5e7f5e94ef1b77d8626bc",
+           "version":"2.2.5","scope":"cep/jsx/r220_montage_writer.jsx only",
+           "reason":"Premiere LIVE SET_IN_FAILED CUT-03: ticks and readback"}
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          ! gh release view v2.2.5 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 5a2b4122e6dc15ccdaf5e7f5e94ef1b77d8626bc
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Full R2.2 Montage test gate, tick-string API readback and rollback
+        run: |
+          set -eu
+          node experimental/r20/r220/tests/test_r220_writer.js
+          python -m unittest discover -s experimental/r20/r220/tests -p 'test_*.py' -v
+      - name: Verify source hashes and package one-file update
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/r222 /tmp/r223 /tmp/r224 dist
+          gh release download v2.2.2 -p AIVE_UPDATE.zip --dir /tmp/r222
+          gh release download v2.2.3 -p AIVE_UPDATE.zip --dir /tmp/r223
+          gh release download v2.2.4 -p AIVE_UPDATE.zip --dir /tmp/r224
+          python - <<'PY'
+          import pathlib,hashlib,json,zipfile
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          target='cep/jsx/r220_montage_writer.jsx'
+          expected='4a9ca94f149a255d6b56c5d3b43c66a85fa60ea24d8367b653fc0cef89de1add'
+          for key in ['r222','r223']:
+            with zipfile.ZipFile('/tmp/'+key+'/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              row=next(i for i in m['files'] if i['path']==target)
+              assert row['sha256']==expected,(key,row['sha256'])
+              assert sha(z.read('payload/'+target))==expected
+          with zipfile.ZipFile('/tmp/r224/AIVE_UPDATE.zip') as z:
+            manifest=json.loads(z.read('manifest.json'))
+            assert manifest['version']=='2.2.4'
+            assert [x['path'] for x in manifest['files']]==['tools/r220_capture.py']
+            assert manifest['files'][0]['before_sha256']=='ec368f7e762047ba14c38cba241368ed392b502bdaef0a8e90aa9fc945f34f33'
+            assert manifest['files'][0]['sha256']=='f6264616a0b24f050f8e3f9cc4eeb6d968888dc0b326c1ae569c8ea56f799e0f'
+          source=pathlib.Path('experimental/r20/r220/cep/jsx/r220_montage_writer.jsx').read_bytes()
+          assert sha(source)!=expected
+          for code in [b'TICKS_PER_SECOND=254016000000',b'item.setInPoint(tickSeconds(seconds),4)',b'item.setOutPoint(tickSeconds(seconds),4)',b'SOURCE_IN_OUT_RESTORE_FAILED']:
+            assert code in source
+          manifest={"format":1,"version":"2.2.5","files":[{"path":target,"before_sha256":expected,"sha256":sha(source)}]}
+          out=pathlib.Path('dist/AIVE_UPDATE.zip')
+          with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+            z.writestr('manifest.json',json.dumps(manifest,indent=2)+'\n')
+            z.writestr('payload/'+target,source)
+          with zipfile.ZipFile(out) as z:
+            assert sorted(z.namelist())==['manifest.json','payload/'+target]
+            assert json.loads(z.read('manifest.json'))==manifest
+            assert sha(z.read('payload/'+target))==manifest['files'][0]['sha256']
+          print('PASS exact previous SHA + one file only + source readback')
+          print('ZIP_SHA256',sha(out.read_bytes()))
+          print('WRITER_SHA256',sha(source))
+          PY
+      - name: Publish Beta only and recheck asset identity
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          gh release create v2.2.5 dist/AIVE_UPDATE.zip \
+            --target 5a2b4122e6dc15ccdaf5e7f5e94ef1b77d8626bc \
+            --title 'AI Video Editor R2.2.5 - Premiere source IN/OUT ticks (BETA TEST)' \
+            --notes 'Premiere LIVE R2.2.4 reached Montage 01 report 10 uncertain CUTs then failed SET_IN_FAILED CUT-03. Patch only cep/jsx/r220_montage_writer.jsx: explicit tick-string ProjectItem IN/OUT, clear existing trims before setting OUT then IN, readback bounds and restore previous source trims in finally. No bypass for failure, existing V1/A1 copy/empty requirement, marker integrity, non-ripple rollback and timeline safety preserved. 31 Python tests and 10 simulated Premiere host scenarios. Premiere LIVE validation pending; use only on [AIVE TEST] copy. Stable R1.9.13 untouched.' \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          python - <<'PY'
+          import json,subprocess,hashlib
+          r=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.2.5']))
+          assert r['prerelease'] and not r['draft'] and len(r['assets'])==1
+          a=r['assets'][0]
+          assert a['name']=='AIVE_UPDATE.zip'
+          assert a['digest']=='sha256:'+hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          print('PASS correct asset name/digest; stable remains protected')
+          PY
