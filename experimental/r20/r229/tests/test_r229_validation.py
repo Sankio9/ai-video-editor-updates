@@ -47,6 +47,24 @@ class RealCaptureRegression(unittest.TestCase):
     else:os.environ["AIVE_R220_HOME"]=self.old
     self.t.cleanup()
  def read(self):return validate(self.doc,self.plan,self.seq)
+ def test_bubuieci_shape_nineteen_cuts_nine_confirmed_ten_reserved(self):
+    # Genuine R220 capture with 19 CUTs, mixed strong/weak ASR and VO gaps.
+    matched=self.events[0]["asr"]
+    weak=self.events[-1]["asr"]
+    events=[]
+    for i in range(1,20):
+        events.append({"kind":"cut","id":"CUT-%02d"%i,
+          "sourceCode":"9981","text":"Declarația pentru test editorial",
+          "asr":matched.copy() if i in (3,9,10,11,12,13,14,15,16) else weak.copy(),
+          "inSeconds":10.,"outSeconds":14.})
+        if i in (2,8,15):events.append({"kind":"vo_gap","durationSeconds":7.})
+    legacy={"events":events,"review":[],"aiAnalysis":{"runtime":{"mode":"REAL_AUDIO"}}}
+    with self.assertRaises(R220Captured) as captured:
+        capture(legacy,{"9981":self.clip},self.doc,self.media,self.seq)
+    plan=Path(captured.exception.detail["plan"])
+    result=validate(self.doc,plan,self.seq)
+    self.assertEqual((result["confirmedCount"],result["placeholderCount"],result["voReserveCount"]),(9,10,3))
+    self.assertEqual(len(result["reportTemplate"]["items"]),10)
  def test_original_capture_can_be_authenticated(self):
     result=self.read()
     self.assertEqual((result["confirmedCount"],result["placeholderCount"],
