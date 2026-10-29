@@ -1,0 +1,30 @@
+name: R2.2.8 deterministic CEP boot race + full R220 subtitle flow (NO RELEASE)
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r228-e2e.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reproduce asynchronous CEP UI timing and full readback->Python->V3 path
+        run: |
+          set -eu
+          node --check experimental/r20/r228/cep/r228_subtitles_panel.js
+          node experimental/r20/r228/tests/test_r228_bootstrap_e2e.js
+          node experimental/r20/r227/tests/test_r227_recovery.js
+          node experimental/r20/r227/tests/test_r227_panel.js
+          node experimental/r20/r226/tests/test_r226_jsx.js
+          python -m unittest discover -s experimental/r20/r226/tests -p test_*.py -v
+          python -m unittest discover -s experimental/r20/r220/tests -p test_*.py -v
+          node experimental/r20/r220/tests/test_r220_writer.js
