@@ -2,7 +2,7 @@
 'use strict';
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
 const code=fs.readFileSync(path.join(__dirname,'../cep/jsx/r226_partial_subtitles.jsx'),'utf8');
-function collection(values){values.numItems=values.length;return values;}
+function collection(values){Object.defineProperty(values,'numItems',{get(){return values.length}});return values;}
 function fakeComp(){
  const props={};
  for(const k of ['Text'])props[k]=value(JSON.stringify({textEditValue:'',fontTextRunLength:[0]}));
@@ -28,8 +28,8 @@ function setup(opts={}){
    const st=Number(ticks)/254016000000,comp=fakeComp();
    const clip={name:'Graphic',projectItem:null,start:{seconds:st},end:{seconds:st+5},
     getMGTComponent:()=>comp,
-    remove(){const arr=video[index].clips,idx=arr.indexOf(clip);if(idx>=0)arr.splice(idx,1);arr.numItems=arr.length;return true;}};
-   video[index].clips.push(clip);video[index].clips.numItems=video[index].clips.length;
+    remove(){const arr=video[index].clips,idx=arr.indexOf(clip);if(idx>=0)arr.splice(idx,1);return true;}};
+   video[index].clips.push(clip);
    return clip;
   }};
  const p={schema:'aive-r226-partial-subs-v1',module:'02',mode:'montage_partial',
@@ -67,7 +67,7 @@ test('Full preflight, two captions readback with ten-second gap',()=>{
  assert.equal(s.video[2].clips[1].start.seconds,14);
 });
 test('No V3 overwrite if occupied',()=>{const s=setup();s.video[2].clips.push({});
- s.video[2].clips.numItems=1;assert.equal(s.call('preflight','R226_PLAN.json').ok,false);});
+ assert.equal(s.call('preflight','R226_PLAN.json').ok,false);});
 test('Missing placeholder marker blocks',()=>{const s=setup();s.ms[0].end.seconds=16;
  assert.match(s.call('preflight','R226_PLAN.json').message,/R220_MARKER_CHANGED/);});
 test('Changed V1 clip blocks',()=>{const s=setup();s.video[0].clips[0].start.seconds=3;
