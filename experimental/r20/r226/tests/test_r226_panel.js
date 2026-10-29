@@ -8,7 +8,7 @@ function start(report,docHash){
  const doc='case.docx';
  const bytes=Buffer.from('test DOCX');
  const files={'D:\\AI-Video-Editor\\Temp\\R220\\last_report.json':report,'case.docx':bytes};
- const fss={existsSync(p){return Object.prototype.hasOwnProperty.call(files,p);},
+ const fss={existsSync(p){return Object.prototype.hasOwnProperty.call(files,p)||/r226_partial_subtitles\.py$|python\.exe$/i.test(p);},
    readFileSync(p,enc){const obj=files[p];
      if(typeof obj==='object'&&!Buffer.isBuffer(obj))return JSON.stringify(obj);
      return obj;}};
