@@ -110,7 +110,11 @@ def patch_panel(old):
    }
    if(key==='subs')withPlan"""
     source=splice_one(source,anchor,replacement)
-    source=splice_one(source,"R2.3.1 BETA","R2.3.2 BETA")
+    # The Beta label may reflect the underlying installed CEP loader. Keep
+    # the update functional regardless of a prior static display label.
+    for previous_label in ("R2.3.1 BETA","R2.2.9 BETA","R2.2.8 BETA"):
+        if previous_label in source:
+            source=source.replace(previous_label,"R2.3.2 BETA")
     if "if(!window.confirm(question))" in source:raise ValueError("NATIVE_TRUNCATED_CONFIRM_REMAINS")
     if "onClickCapture" not in source or "recoverOrFallback" not in source:
         raise ValueError("R220_BRIDGE_LOST")
