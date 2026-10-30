@@ -4,7 +4,7 @@ const path=process.argv[2];
 if(!path)throw Error('Provide extracted release panel path');
 const source=fs.readFileSync(path,'utf8');
 const start=source.indexOf('  function showNameTagReview(');
-const end=source.indexOf('  function conflict(key,inventory)',start);
+const end=source.indexOf(' function conflict(key,inventory)',start);
 assert(start>=0&&end>start,'Missing review modal in installed CEP panel');
 const code=source.slice(start,end)+'\nthis.showNameTagReview=showNameTagReview;';
 function node(tag){
