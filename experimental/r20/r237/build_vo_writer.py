@@ -14,10 +14,16 @@ def derive(original):
     old="if(!p||p.schema!=='aive-r20-graphics-v1'||p.mode!=='independent'||!N.hasOwnProperty(p.module))"
     new="if(!p||p.schema!=='aive-r20-graphics-v1'||p.mode!=='montage_vo'||p.module!=='04'||p.r237Schema!=='aive-r237-vo-montage-v1'||p.timing!=='VO_RESERVE_ESTIMATED'||!N.hasOwnProperty(p.module))"
     s=replace_one(s,old,new)
+    old="""if((p.module==='02'&&p.timing!=='SCRIPT_PREVIEW')||(p.module!=='02'&&p.timing!=='EDITORIAL_PREVIEW'))"""
+    new="""if(p.timing!=='VO_RESERVE_ESTIMATED')"""
+    s=replace_one(s,old,new)
     old="""    if(prev){var gap=a.startSeconds-prev.startSeconds-prev.durationSeconds;
         if(gap<-.01||gap>(prev.groupId===a.groupId?.13:p.separatorSeconds+.13))fail('Gap/overlap nepermis');}"""
     new="""    if(prev && a.startSeconds<prev.startSeconds+prev.durationSeconds-.01)
       fail('R237 VO MOGRT OVERLAP');"""
+    s=replace_one(s,old,new)
+    old="      if(a.physicalLines[j].length>33)fail('Line carton >33');"
+    new="      if(a.physicalLines[j].length>28)fail('R237 Line carton >28');"
     s=replace_one(s,old,new)
     old="    return N[p.module];"
     new="""    if(!p.sequenceId||!/^[a-f0-9]{64}$/.test(text(p.montagePlanSHA256)))
