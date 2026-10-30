@@ -171,3 +171,10 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [ ] `r193_workflow.js` trebuie să invoce analiza R220 după diagnosticul ASR și să afișeze dialog numai dacă există probleme; nu există încă ramură integrată în panoul 01.
 - [ ] Schema plan trebuie să includă şi VO-card + spațiile editoriale din scenariul DOCX, nu doar CUT-urile din diagnosticul R193.
 - [ ] Premiere LIVE pe copie de secvență: `Sequence.overwriteClip`, `MarkerCollection.createMarker`, `TrackItem.remove(false,false)`, `marker.end` readback și restaurarea source In/Out, fără ripple pe alte piste, confirmate manual. Până atunci **NU instala/wire writerul în beta publică**.
+
+## R2.3.0 — independent DOCX heterogen
+- [x] Documentele originale în nouă formate au fost citite local fără raport de montaj; 02/03/04 își disting datele relevante.
+- [x] Cele 8 structuri DOCX sintetice au trecut ruta din generatorul aprobat R2.1.2 + fallback R2.3, în CI `41018003189`/`41018278152`.
+- [x] Strikethrough pe mostrele cu tăieturi; nu apar source/media/geo în textul replicilor, nu se inventează NameTag fără funcție sau VO unde nu există.
+- [x] Paket Beta SHA-256, 2 fișiere numai; writer JSX, 01, 05 și Stable 1.9.13 neatinse.
+- [ ] LIVE Premiere Pro 2025: verifică independent câte un DOCX relevant pe V3/V4/V5 cu preflight/readback și că nu s-a schimbat V1/A1. Nu se declară PASS înaintea confirmării editorului.
