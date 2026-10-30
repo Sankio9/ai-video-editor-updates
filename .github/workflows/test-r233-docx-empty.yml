@@ -38,7 +38,7 @@ jobs:
             (pathlib.Path('/tmp/aive_runtime/tools')/'r230_universal.py').write_bytes(z.read('payload/tools/r230_universal.py'))
             pathlib.Path('dist/r233_panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
           PY
-      - name: Reproduce zero-content plans and guarded CN with single complete Python module
+      - name: Verify module 02 03 04 no-content and safe CN metadata
         run: |
           set -eu
           python experimental/r20/r233/tests/test_r233_content.py
