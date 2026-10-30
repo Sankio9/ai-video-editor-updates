@@ -1,0 +1,121 @@
+name: 'Publish R2.3.3 Beta safe independent graphics diagnostics'
+on:
+  push:
+    branches: [main]
+    paths: ['release/r233-safe-docx-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r233-safe-docx
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release request and frozen Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          x=json.load(open('release/r233-safe-docx-request.json'))
+          assert x=={
+            'version':'2.3.3',
+            'source_commit':'6cbad3f229f7f89af9ac09104e915b211a2ce781',
+            'scope':['cep/r20_panel.js','tools/r230_universal.py'],
+            'policy':'Explicit zero-content read-only diagnostics, no fabricated subtitles, NameTags or captions; safe CN approval'
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.3.3 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 6cbad3f229f7f89af9ac09104e915b211a2ce781
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Assemble strict two-file SHA-checked Beta from published v2.3.2
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/prior /tmp/aive_runtime/tools dist
+          gh release download v2.3.2 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v232.zip
+          gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v230.zip
+          python experimental/r20/r233/build_r233.py --prior /tmp/prior/v232.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('/tmp/prior/v230.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r20_graphics_plans.py').write_bytes(z.read('payload/tools/r20_graphics_plans.py'))
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r230_universal.py').write_bytes(z.read('payload/tools/r230_universal.py'))
+            pathlib.Path('dist/r233_panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+          PY
+      - name: Re-run all three DOCX modules including no-content safety
+        run: |
+          set -eu
+          python experimental/r20/r233/tests/test_r233_content.py
+          node --check dist/r233_panel.js
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/r233_panel.js
+      - name: Final asset verify exact previous SHA and not touching MOGRT or Stable
+        run: |
+          set -eu
+          python - <<'PY'
+          import zipfile,json,hashlib,pathlib
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/prior/v232.zip') as old:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.3.3' and m['format']==1
+            rows={x['path']:x for x in m['files']}
+            assert set(rows)=={'cep/r20_panel.js','tools/r230_universal.py'}
+            for p,r in rows.items():
+              assert r['before_sha256']==sha(old.read('payload/'+p))
+              assert r['sha256']==sha(z.read('payload/'+p))
+            panel=z.read('payload/cep/r20_panel.js')
+            assert b'R2.3.3 BETA' in panel
+            assert b'ENGINE_VERSION_MISMATCH' in panel
+            assert b'showNameTagReview' in panel and b'rollback' in panel
+            assert b'onClickCapture' in panel and b'recoverOrFallback' in panel
+            assert b'NIMIC DE INSERAT' in panel
+            assert b'if(plan.items===0)' in panel
+            assert not any(p.startswith('cep/jsx/') or p.startswith('updater/') for p in rows)
+          print('PASS exact SHA before and after, 02/03/04 safe zero-content without changing original MOGRT writer')
+          print('ASSET_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+      - name: Release Beta only and verify uploaded asset digest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          cat > /tmp/r233_release_notes.md <<'EOF'
+          R2.3.3 BETA fixes unsafe user-facing errors when the selected DOCX has zero applicable material in independent 02 Subtitles, 03 NameTag or 04 Cartoane. Python now emits a valid empty plan and per-module editorial content summary instead of ValueError traceback; CEP displays the selected filename, nonempty-paragraph/table/declaration/identified-speaker/carton counts, and stops BEFORE Premiere preflight or MOGRT insertion. It does not fabricate subtitles, NameTags or cards. For prose DOCX without explicit cuts, a conservative CN Italic preview is available only with an explicit SCENARIU heading or at least three substantive prose blocks, and requires explicit user confirmation before the V3 write; timings remain editorial estimates. All transcript Word mixed Italic/Regular boundaries, two-column CN handling, NameTag full scroll review, strict DOCX and SHA guard, V3/V4/V5 collision check, readback and rollback remain. Exact SHA-pinned 2-file update from v2.3.2 only (cep/r20_panel.js and tools/r230_universal.py). No changes to JSX/MOGRT writers, 01 montage, 05 HOLD, updater, or protected Stable R1.9.13. Real Premiere LIVE after this version is still NOT confirmed by CI; users should review selected DOCX in 00 and test on nonproduction sequence.
+          EOF
+          gh release create v2.3.3 dist/AIVE_UPDATE.zip \
+            --target 6cbad3f229f7f89af9ac09104e915b211a2ce781 \
+            --title 'AI Video Editor R2.3.3 - Independent DOCX safe diagnostics (BETA)' \
+            --notes-file /tmp/r233_release_notes.md \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import json,hashlib,subprocess
+          r=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.3.3']))
+          assert r['prerelease'] and not r['draft'] and len(r['assets'])==1
+          a=r['assets'][0]
+          digest=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert a['name']=='AIVE_UPDATE.zip' and a['digest']=='sha256:'+digest
+          print('PASS published SHA-256',digest)
+          PY
