@@ -200,3 +200,8 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] Script heading allows guarded, explicitly approved Italic CN; article teaser alone never creates content; explicit speech/carton still parsed.
 - [x] Mock modal 26 CUT NameTag accept/stop; SHA-guarded only two files from v2.3.2; Stable v1.9.13 preserved. Runs 41030621990, 41030862629.
 - [ ] LIVE Premiere 2025 installed v2.3.3: status `NIMIC DE INSERAT` only for genuinely inapplicable content; valid marked script still inserts V3/V4/V5 safely; target tracks unchanged if empty. 
+
+## R2.3.4 — real Word six-grid reader
+- [x] Inspecție locală DOCX real: 1 tabel, 21 rânduri, 6 coloane fizice, 17 paragrafe editoriale + 3 nume/rol SOT, fără publicare document privat.
+- [x] Test sintetic CI 41033317158 şi release CI 41033553885: merged cells 0–1/2–3, 4–5 goale, skip INTRO, start după PKG; CN Italic, 3 SOT Regular+NameTag, 0 V5 inventate; suport 2 coloane, modal 26 CUT-uri, SHA pinned.
+- [ ] Test LIVE în Premiere pentru DOCX-ul real: 02 adaugă CN şi SOT pe V3; 03 trei burtiere V4; 04 notifică nimic de inserat V5 fără modificări.
