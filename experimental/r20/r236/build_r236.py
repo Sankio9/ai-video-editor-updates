@@ -50,7 +50,7 @@ def patch_panel(raw,old_universal,new_universal):
  before=sha(old_universal)
  if s.count(before)!=1:raise ValueError("UNIVERSAL_SHA_HANDSHAKE_ANCHOR_MISSING")
  s=replace(s,before,sha(new_universal))
- old="""   var msg='Montaj parțial R220: '+summary.subtitledCuts+' CUT-uri validate, '+"""
+ old="""var msg='Montaj parțial R220: '+summary.subtitledCuts+' CUT-uri validate, '+"""
  new="""   var reviewCuts=summary.skippedConfirmedCuts||[];
    var reviewLine=reviewCuts.length?
      '\\nCUT-uri audio confirmate fără subtitrare: '+
