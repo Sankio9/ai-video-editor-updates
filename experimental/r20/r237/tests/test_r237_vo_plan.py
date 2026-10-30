@@ -65,6 +65,7 @@ class Cases(unittest.TestCase):
  def test_missing_vo_slot_stops(self):
   self.m['cuts']=[x for x in self.m['cuts'] if x['cutId']!='VO-002']
   self.m['voReserveCount']=1
+  self.m.pop('planSHA256',None)
   self.m['planSHA256']=digest(self.m)
   self.r['planSHA256']=self.m['planSHA256']
   self.save()
@@ -73,6 +74,7 @@ class Cases(unittest.TestCase):
  def test_invalid_sha_and_unreadback_stops(self):
   self.m['planSHA256']='a'*64;self.save()
   with self.assertRaisesRegex(ValueError,'PLAN_SHA_MISMATCH'):build(self.doc,self.mp,self.rp)
+  self.m.pop('planSHA256',None)
   self.m['planSHA256']=digest(self.m);self.r['phase']='ANALYSIS_ONLY';self.save()
   with self.assertRaisesRegex(ValueError,'MONTAGE_READBACK_REQUIRED'):build(self.doc,self.mp,self.rp)
   print('PASS no VO graphics with changed plan or missing verified live readback')
