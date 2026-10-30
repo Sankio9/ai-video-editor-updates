@@ -205,3 +205,11 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] Inspecție locală DOCX real: 1 tabel, 21 rânduri, 6 coloane fizice, 17 paragrafe editoriale + 3 nume/rol SOT, fără publicare document privat.
 - [x] Test sintetic CI 41033317158 şi release CI 41033553885: merged cells 0–1/2–3, 4–5 goale, skip INTRO, start după PKG; CN Italic, 3 SOT Regular+NameTag, 0 V5 inventate; suport 2 coloane, modal 26 CUT-uri, SHA pinned.
 - [ ] Test LIVE în Premiere pentru DOCX-ul real: 02 adaugă CN şi SOT pe V3; 03 trei burtiere V4; 04 notifică nimic de inserat V5 fără modificări.
+
+
+## 04 Cartoane — noua încadrare prioritară 9:16 (cerință LIVE 30.10.2026)
+- [ ] **Generator V5 nou:** maximum **29 caractere vizibile** pe fiecare `physicalLines` (inclusiv spații și punctuație), **preferabil ≤28**; limită aplicată pe fiecare rând, nu pe frază și nu doar pe rezultatul din 16:9. Verifică înainte și după completarea câmpurilor Orange/Bold.
+- [ ] **Încadrare vizuală:** aceeași propoziție în Premiere pe 1920×1080 și **1080×1920**. Nicio literă/culoare/contur la margine tăiată în vertical, inclusiv la fonturi cu glyphuri late.
+- [ ] **Paginare:** maximum 4 rânduri per MOGRT, 1..N pagini, rânduri echilibrate semantic și fără cuvinte rupte sau text pierdut. Pentru text >4×29, creează pagină suplimentară.
+- [ ] **Regresii:** 02 V3 rămâne max 74 caractere; NameTag V4 nemodificat; Orange/Bold, coliziuni V5 și rollback păstrate.
+- [x] **Regula documentată** în Master Spec; [ ] **NU este încă implementată/validată LIVE în generatorul R2.3.4.** Rândurile istorice din aceste teste cu «33» descriu doar vechiul criteriu și nu trebuie folosite ca regulă pentru următorul release.
