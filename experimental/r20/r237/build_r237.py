@@ -68,8 +68,8 @@ def build(v235,v223,v224,v200,out):
     for p,d in modified.items():
         if p.endswith('.py'):compile(d,p,'exec')
     javascript=modified[PANEL].decode('utf8')
-    if javascript.count('function onClickCapture')<1 or
-       'R237 VO' not in javascript or 'showNameTagReview' not in javascript:
+    if (javascript.count('function onClickCapture')<1 or
+        'R237 VO' not in javascript or 'showNameTagReview' not in javascript):
         raise ValueError("R237_CEP_MODULE_HOOK_MISSING")
     if b'app.enableQE' in b''.join(modified.values()):
         raise ValueError("QE_FORBIDDEN")
