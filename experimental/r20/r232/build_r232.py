@@ -73,7 +73,7 @@ def patch_panel(old):
     if(stop.focus)stop.focus();
   }
 """
-    source=splice_one(source,"  function conflict(key,inventory){",dialog+"  function conflict(key,inventory){")
+    source=splice_one(source," function conflict(key,inventory){",dialog+" function conflict(key,inventory){")
     start=source.index("     var skipReport='';")
     end=source.index("     var n=0,tok='';",start)
     if start<0 or end<start:raise ValueError("NAMETAG_BLOCK_NOT_FOUND")
@@ -110,6 +110,7 @@ def patch_panel(old):
    }
    if(key==='subs')withPlan"""
     source=splice_one(source,anchor,replacement)
+    source=splice_one(source,"R2.3.1 BETA","R2.3.2 BETA")
     if "if(!window.confirm(question))" in source:raise ValueError("NATIVE_TRUNCATED_CONFIRM_REMAINS")
     if "onClickCapture" not in source or "recoverOrFallback" not in source:
         raise ValueError("R220_BRIDGE_LOST")
