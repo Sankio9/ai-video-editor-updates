@@ -108,10 +108,10 @@ def patch_panel(original):
   raise ValueError("R229_BRIDGE_LOST")
  return s.encode('utf8')
 
-def build(r230,r226,r229,output):
+def build(r230,r226,r235,output):
  # Released files only, never guess from branch candidates.
  sources={}
- for file,version,path in [(r230,"2.3.0",NAMETAG),(r226,"2.2.6",SUBS),(r229,"2.2.9",PANEL)]:
+ for file,version,path in [(r230,"2.3.0",NAMETAG),(r226,"2.2.6",SUBS),(r235,"2.3.5",PANEL)]:
   with zipfile.ZipFile(file) as z:
    manifest=json.loads(z.read("manifest.json"))
    if manifest.get("version")!=version:raise ValueError("SOURCE_RELEASE_VERSION_CHANGED "+version)
@@ -136,6 +136,6 @@ def build(r230,r226,r229,output):
 if __name__=="__main__":
  ap=argparse.ArgumentParser()
  ap.add_argument("--v230",required=True);ap.add_argument("--v226",required=True)
- ap.add_argument("--v229",required=True);ap.add_argument("--out",required=True)
+ ap.add_argument("--v235",required=True);ap.add_argument("--out",required=True)
  a=ap.parse_args()
- print(json.dumps(build(a.v230,a.v226,a.v229,a.out),indent=2))
+ print(json.dumps(build(a.v230,a.v226,a.v235,a.out),indent=2))
