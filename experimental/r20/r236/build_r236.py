@@ -50,25 +50,10 @@ def patch_panel(raw,old_universal,new_universal):
  before=sha(old_universal)
  if s.count(before)!=1:raise ValueError("UNIVERSAL_SHA_HANDSHAKE_ANCHOR_MISSING")
  s=replace(s,before,sha(new_universal))
- old="""var msg='Montaj parțial R220: '+summary.subtitledCuts+' CUT-uri validate, '+"""
- new="""   var reviewCuts=summary.skippedConfirmedCuts||[];
-   var reviewLine=reviewCuts.length?
-     '\\nCUT-uri audio confirmate fără subtitrare: '+
-     reviewCuts.map(function(x){return x.cutId+' ('+x.reason+')';}).join(', ')+'.\\n':'';
-   var msg='Montaj parțial R220: '+summary.subtitledCuts+' CUT-uri validate, '+"""
- s=replace(s,old,new)
- old="""       ' CUT-uri rezervate NU vor avea subtitrări.\\n'+"""
- new="""       ' CUT-uri rezervate NU vor avea subtitrări.\\n'+reviewLine+"""
- if s.count(old)==1:s=replace(s,old,new)
- elif 'CUT-uri rezervate NU vor avea subtitrări.' not in s:raise ValueError('R229_RESERVED_COUNT_LABEL_MISSING')
- old="""          status('[PREMIERE READBACK] '+r.message+' | '+r.sourceCuts+
-            ' CUT-uri cu subtitrări, '+r.omitted+' CUT-uri fără audio confirmat.');"""
- new="""          status('[PREMIERE READBACK] '+r.message+' | '+r.sourceCuts+
-            ' CUT-uri cu subtitrări, '+r.omitted+' CUT-uri fără audio confirmat, '+
-            reviewCuts.length+' CUT-uri confirmate omise pentru durate nesigure.'+
-            (reviewCuts.length?'\\n'+reviewCuts.map(function(x){return x.cutId+': '+x.reason;}).join('\\n'):''));"""
- s=replace(s,old,new)
  if 'R2.3.5 BETA' in s:s=s.replace('R2.3.5 BETA','R2.3.6 BETA')
+ # Do not modify any of the R229 approval/readback sequence with string
+ # substitutions unless an exact verified source signature is available.
+ # Per-CUT review remains captured in the SHA-guarded R226 plan JSON.
  for key in ('ENGINE_VERSION_MISMATCH','onClickCapture','recoverOrFallback',
              'showNameTagReview','noContentStatus','rollback'):
   if key not in s:raise ValueError("SAFETY_FEATURE_LOST "+key)
