@@ -37,7 +37,7 @@ jobs:
               p=pathlib.Path('/tmp/r236_runtime')/name
               p.write_bytes(z.read('payload/'+name))
           PY
-      - name: Test actual shipping code on contradictory CUT source and verified partial montage
+      - name: Test contradictory NameTag source and limited-duration confirmed CUTs against current R235 panel
         run: |
           set -eu
           python experimental/r20/r236/tests/test_r236.py
