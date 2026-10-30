@@ -29,7 +29,7 @@ jobs:
           mv /tmp/aive_release/AIVE_UPDATE.zip /tmp/aive_release/v231.zip
           gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/aive_release
           mv /tmp/aive_release/AIVE_UPDATE.zip /tmp/aive_release/v230.zip
-      - name: Build exactly two SHA guarded files preserving Premiere writer and updated title
+      - name: Build exactly two SHA guarded files preserving Premiere writer with any verified prior UI label
         run: |
           set -eu
           python experimental/r20/r232/build_r232.py --prior /tmp/aive_release/v231.zip --output dist/AIVE_UPDATE.zip
