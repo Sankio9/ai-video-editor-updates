@@ -59,7 +59,8 @@ def patch_panel(raw,old_universal,new_universal):
  s=replace(s,old,new)
  old="""       ' CUT-uri rezervate NU vor avea subtitrări.\\n'+"""
  new="""       ' CUT-uri rezervate NU vor avea subtitrări.\\n'+reviewLine+"""
- s=replace(s,old,new)
+ if s.count(old)==1:s=replace(s,old,new)
+ elif 'CUT-uri rezervate NU vor avea subtitrări.' not in s:raise ValueError('R229_RESERVED_COUNT_LABEL_MISSING')
  old="""          status('[PREMIERE READBACK] '+r.message+' | '+r.sourceCuts+
             ' CUT-uri cu subtitrări, '+r.omitted+' CUT-uri fără audio confirmat.');"""
  new="""          status('[PREMIERE READBACK] '+r.message+' | '+r.sourceCuts+
