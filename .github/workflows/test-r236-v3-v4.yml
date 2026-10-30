@@ -1,0 +1,58 @@
+name: 'R236 V4 source-review and partial V3 duration regression (NO RELEASE)'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r236-v3-v4.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install docx runtime and retrieve exactly published predecessor sources
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/prior /tmp/r236_runtime/tools dist
+          gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v230.zip
+          gh release download v2.2.6 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v226.zip
+          python experimental/r20/r236/build_r236.py --v230 /tmp/prior/v230.zip \
+             --v226 /tmp/prior/v226.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            for name in ('tools/r20_graphics_plans.py','tools/r226_partial_subtitles.py'):
+              p=pathlib.Path('/tmp/r236_runtime')/name
+              p.write_bytes(z.read('payload/'+name))
+          PY
+      - name: Test actual shipping code on contradictory CUT source and verified partial montage
+        run: |
+          set -eu
+          python experimental/r20/r236/tests/test_r236.py
+      - name: Verify strict SHA before/after, only 2 Python files, no JSX changes
+        run: |
+          set -eu
+          python - <<'PY'
+          import hashlib,zipfile,json,pathlib
+          h=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            m=json.loads(z.read('manifest.json'))
+            assert m['format']==1 and m['version']=='2.3.6'
+            f={i['path']:i for i in m['files']}
+            assert set(f)=={'tools/r20_graphics_plans.py','tools/r226_partial_subtitles.py'}
+            assert all(i['before_sha256'] and i['sha256']==h(z.read('payload/'+p)) for p,i in f.items())
+            assert b'REVIEW_MISSING_IDENTITY' in z.read('payload/tools/r20_graphics_plans.py')
+            assert b'skippedConfirmedCuts' in z.read('payload/tools/r226_partial_subtitles.py')
+          print('PASS R236 zero JSX/MOGRT/V1/A1/Stable modifications, original expected SHA guarded')
+          print('ZIP_SHA256',h(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
