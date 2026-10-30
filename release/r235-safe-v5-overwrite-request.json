@@ -1,0 +1,9 @@
+{
+  "version": "2.3.5",
+  "source_commit": "06441633927f2a0dd2b68175a6d088dcb58d2f48",
+  "scope": [
+    "cep/r20_panel.js",
+    "cep/jsx/r235_v5_clone.jsx"
+  ],
+  "policy": "Overwrite V5 only on verified clone, never source; no QE or video/photo destruction"
+}
