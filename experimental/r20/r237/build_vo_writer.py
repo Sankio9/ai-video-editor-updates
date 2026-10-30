@@ -17,8 +17,8 @@ def derive(original):
     old="""if((p.module==='02'&&p.timing!=='SCRIPT_PREVIEW')||(p.module!=='02'&&p.timing!=='EDITORIAL_PREVIEW'))"""
     new="""if(p.timing!=='VO_RESERVE_ESTIMATED')"""
     s=replace_one(s,old,new)
-    old="""      if(prev){var gap=a.startSeconds-prev.startSeconds-prev.durationSeconds;
-        if(gap<-.01||gap>(prev.groupId===a.groupId?.13:p.separatorSeconds+.13))fail('Gap/overlap nepermis');}"""
+    old="""     if(prev){var gap=a.startSeconds-prev.startSeconds-prev.durationSeconds;
+       if(gap<-.01||gap>(prev.groupId===a.groupId?.13:p.separatorSeconds+.13))fail('Gap/overlap nepermis');}"""
     new="""    if(prev && a.startSeconds<prev.startSeconds+prev.durationSeconds-.01)
       fail('R237 VO MOGRT OVERLAP');"""
     s=replace_one(s,old,new)
