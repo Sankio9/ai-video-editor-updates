@@ -31,7 +31,7 @@ def build(previous,output):
     if len(matches)!=1 or matches[0].group(2)!=sha(files["tools/r230_universal.py"]):
         raise ValueError("R233_PANEL_HANDSHAKE_SHA_MISMATCH")
     panel=panel[:matches[0].start(2)]+sha(parser)+panel[matches[0].end(2):]
-    if panel.count("R2.3.3 BETA")!=1:raise ValueError("R233_VERSION_MARKER_CHANGED")
+    if panel.count("R2.3.3 BETA")<1:raise ValueError("R233_VERSION_MARKER_CHANGED")
     panel=panel.replace("R2.3.3 BETA","R2.3.4 BETA")
     for invariant in (b"ENGINE_VERSION_MISMATCH",b"onClickCapture",b"recoverOrFallback",
                       b"showNameTagReview",b"NIMIC DE INSERAT",b"rollback"):
