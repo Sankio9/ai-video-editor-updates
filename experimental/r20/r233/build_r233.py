@@ -21,7 +21,7 @@ def patch_panel(raw,new_sha):
    "strikeAudit:plan.strikeAudit,strikeAnalysisReady:plan.strikeAnalysisReady,contentSummary:plan.contentSummary||null});")
  # No automatic 'empty plan' validat(e)/buildOne call. For real no-data
  # without a clear script mark, the user receives a precise diagnosis.
- const_marker="  function run(key,verified){"
+ const_marker=" function run(key,verified){"
  helper="""  function noContentStatus(doc,mod,plan){
     var a=plan.contentSummary||{},base=path.basename(doc||'necunoscut.docx');
     var desc=mod==='02'?'Nu s-au identificat replici pentru V3.':
