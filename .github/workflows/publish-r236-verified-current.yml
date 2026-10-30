@@ -1,0 +1,136 @@
+name: Publish R2.3.6 Beta - verified DOCX coverage NameTag and Montage JSX bridge
+on:
+  push:
+    branches: [main]
+    paths: [release/r236-verified-current-issues.json]
+permissions: {contents: write}
+concurrency:
+  group: r236-tested-integrated
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact user-issue request and preserved Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          x=json.load(open('release/r236-verified-current-issues.json'))
+          assert x=={'version':'2.3.6',
+            'commit':'c7ad6ac0948c24a6176d0ecc0286f533e8286612',
+            'scope':'Montage JSX file-bridge; complete independent DOCX V3/V4/V5 canonical parsing, source-aware NameTags'}
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.3.6 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: c7ad6ac0948c24a6176d0ecc0286f533e8286612
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Build exact pinned patch against latest published per-file SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/aive_prior /tmp/r236_runtime/tools dist
+          for v in 2.2.5 2.2.6 2.2.7 2.3.0 2.3.4 2.3.5; do
+            mkdir -p /tmp/aive_prior/$v
+            gh release download v$v -p AIVE_UPDATE.zip --dir /tmp/aive_prior/$v
+          done
+          python experimental/r20/r239/build_r239.py \
+            --v225 /tmp/aive_prior/2.2.5/AIVE_UPDATE.zip \
+            --v226 /tmp/aive_prior/2.2.6/AIVE_UPDATE.zip \
+            --v227 /tmp/aive_prior/2.2.7/AIVE_UPDATE.zip \
+            --v230 /tmp/aive_prior/2.3.0/AIVE_UPDATE.zip \
+            --v234 /tmp/aive_prior/2.3.4/AIVE_UPDATE.zip \
+            --v235 /tmp/aive_prior/2.3.5/AIVE_UPDATE.zip \
+            --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            for p in z.namelist():
+              if p.startswith('payload/tools/') and p.endswith('.py'):
+                (pathlib.Path('/tmp/r236_runtime/tools')/pathlib.Path(p).name).write_bytes(z.read(p))
+            pathlib.Path('dist/r239_writer.js').write_bytes(z.read('payload/cep/jsx/r220_montage_writer.jsx'))
+            pathlib.Path('dist/r239_workflow.js').write_bytes(z.read('payload/cep/r193_workflow.js'))
+            pathlib.Path('dist/r239_panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+          PY
+      - name: Regression original DOCX pattern + six NameTags + first 0012 + all VO
+        run: |
+          set -eu
+          python experimental/r20/r236/tests/test_r236_balatinaname.py
+          python experimental/r20/r237/tests/test_r237_balatinashape.py
+      - name: Regression Premiere JSX preflight and rollback with exact published writer
+        run: |
+          set -eu
+          AIVE_WRITER_PATH="$PWD/dist/r239_writer.js" node experimental/r20/r238/tests/test_r238_writer.js
+          node --check dist/r239_writer.js
+          node --check dist/r239_workflow.js
+          node --check dist/r239_panel.js
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/r239_panel.js
+      - name: Verify 8 exact prior SHA, no unapproved media writer change
+        run: |
+          set -eu
+          python - <<'PY'
+          import zipfile,json,hashlib,pathlib
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          originals={
+            'cep/r193_workflow.js':'2.2.7',
+            'cep/jsx/r220_montage_writer.jsx':'2.2.5',
+            'cep/r20_panel.js':'2.3.5',
+            'tools/r20_graphics_plans.py':'2.3.0',
+            'tools/r230_universal.py':'2.3.4',
+            'tools/r226_partial_subtitles.py':'2.2.6'}
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            manifest=json.loads(z.read('manifest.json'))
+            rows={r['path']:r for r in manifest['files']}
+            assert manifest['version']=='2.3.6' and manifest['format']==1
+            assert set(rows)==set(originals)|{'tools/r236_name_guard.py','tools/r237_coverage.py'}
+            for p,row in rows.items():
+              assert sha(z.read('payload/'+p))==row['sha256']
+              if p in originals:
+                with zipfile.ZipFile('/tmp/aive_prior/'+originals[p]+'/AIVE_UPDATE.zip') as old:
+                  assert sha(old.read('payload/'+p))==row['before_sha256'],p
+              else:assert row['before_sha256'] is None
+            assert not any(p.startswith('updater/') or p=='cep/jsx/r20_graphics.jsx' for p in rows)
+            assert b'commitFromFile' in z.read('payload/cep/r193_workflow.js')
+            assert b'PREFLIGHT_REJECTED' in z.read('payload/cep/jsx/r220_montage_writer.jsx')
+          print('PASS exact eight files, latest installed before_sha256, no MOGRT executor nor updater changes')
+          print('PACKAGE_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+      - name: Publish prerelease only after all tests and verify uploaded sha256
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          cat > /tmp/r236-notes.md <<'EOF'
+          R2.3.6 BETA — correction for current user's reported blockers in reportaj Balatina.
+          Montage 01: fix opaque 'Premiere JSX error EvalScript error' caused by uncaught preflight exceptions and giant JSON plan passed via CEP. Transfer verified plan file path + approved SHA, return exact Premiere safety/preflight reason. Use Premiere documented String timestamp for overwriteClip; original track preflight, source identity and rollback remain. DOES NOT guarantee the active Premiere sequence passes preflight.
+          Independent 02/03/04: remove legacy-first parser's silent acceptance of partial DOCX. Universal DOCX reader + read-only paragraph coverage audit checks each eligible timed passage and each uppercase VO card. Includes ambient 0012, 8 timed passages, eight VO paragraphs (five blocks), repeated six NameTags for Nina Gonța and Eugenia Daineco, with explicit name+role/source verification, and mixed/full strikethrough filtering for 02. Missing content now blocks insertion rather than silently omitting it. MOGRT JSX writer, updater and Stable 1.9.13 unchanged.
+          Synthetic source-structure tests, 13 Premiere JavaScript mocks (including abort with unchanged original and rollback), UTF8+SHA per-file checks PASS. Premiere 2025 LIVE insertion is not certified by CI. Pending separate work: Montage 01 Strikethrough option before ASR and synced 04 VO insertion based on completed montage VO reservations. Do not present this Beta as final acceptance of those two older requests.
+          EOF
+          gh release create v2.3.6 dist/AIVE_UPDATE.zip --target c7ad6ac0948c24a6176d0ecc0286f533e8286612 \
+            --title 'AI Video Editor R2.3.6 - Montage error and independent DOCX completeness (BETA)' \
+            --notes-file /tmp/r236-notes.md --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import json,hashlib,subprocess
+          release=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.3.6']))
+          actual=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert release['prerelease'] and not release['draft'] and len(release['assets'])==1
+          assert release['assets'][0]['digest']=='sha256:'+actual
+          print('PASS published Beta asset SHA256',actual)
+          PY
