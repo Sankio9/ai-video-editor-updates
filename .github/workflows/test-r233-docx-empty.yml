@@ -1,0 +1,69 @@
+name: 'R2.3.3 safe DOCX/no-content diagnostics CI (NO RELEASE)'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r233-docx-empty.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare source and real R2.3.2 release baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/prior dist /tmp/aive_runtime/tools
+          gh release download v2.3.2 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v232.zip
+          gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v230.zip
+          python experimental/r20/r233/build_r233.py --prior /tmp/prior/v232.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('/tmp/prior/v230.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r20_graphics_plans.py').write_bytes(z.read('payload/tools/r20_graphics_plans.py'))
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r230_universal.py').write_bytes(z.read('payload/tools/r230_universal.py'))
+            pathlib.Path('dist/r233_panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+          PY
+      - name: Reproduce screenshot with 0/0/0 safely and check plain CN
+        run: |
+          set -eu
+          python experimental/r20/r233/tests/test_r233_content.py
+          node --check dist/r233_panel.js
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/r233_panel.js
+      - name: Verify 2 files only with strict SHA and no writer changes
+        run: |
+          set -eu
+          python - <<'PY'
+          import json,hashlib,zipfile,pathlib
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/prior/v232.zip') as prev:
+            m=json.loads(z.read('manifest.json'))
+            files={r['path']:r for r in m['files']}
+            assert m['version']=='2.3.3' and m['format']==1
+            assert set(files)=={'cep/r20_panel.js','tools/r230_universal.py'}
+            for p,r in files.items():
+              assert r['before_sha256']==sha(prev.read('payload/'+p))
+              assert r['sha256']==sha(z.read('payload/'+p))
+            s=z.read('payload/cep/r20_panel.js')
+            assert b'NIMIC DE INSERAT' in s and b'ENGINE_VERSION_MISMATCH' in s
+            assert b'onClickCapture' in s and b'recoverOrFallback' in s
+            assert b'showNameTagReview' in s and b'rollback' in s
+            assert b'if(plan.items===0)' in s
+            assert not any(p.startswith('cep/jsx/') or p.startswith('updater/') for p in files)
+          print('PASS R233 SHA before/after, only 2 source files, all protection retained')
+          print('ZIP_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
