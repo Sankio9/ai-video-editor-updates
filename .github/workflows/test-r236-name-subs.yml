@@ -1,0 +1,81 @@
+name: 'R2.3.6 candidate validate real DOCX role/source and partial-cut subtitles (NO RELEASE)'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r236-name-subs.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build from real published sources only
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/base /tmp/r236_runtime/tools dist
+          for tag in 2.3.0 2.2.6 2.3.4 2.3.5; do
+            mkdir -p /tmp/base/v$tag
+            gh release download v$tag -p AIVE_UPDATE.zip --dir /tmp/base/v$tag
+          done
+          python experimental/r20/r236/build_r236.py \
+            --v230 /tmp/base/v2.3.0/AIVE_UPDATE.zip \
+            --v226 /tmp/base/v2.2.6/AIVE_UPDATE.zip \
+            --v234 /tmp/base/v2.3.4/AIVE_UPDATE.zip \
+            --v235 /tmp/base/v2.3.5/AIVE_UPDATE.zip \
+            --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            for name in z.namelist():
+              if not name.startswith('payload/tools/') or not name.endswith('.py'):continue
+              p=pathlib.Path('/tmp/r236_runtime/tools')/pathlib.Path(name).name
+              p.write_bytes(z.read(name))
+            pathlib.Path('dist/panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+          PY
+      - name: Verify six explicit speaker blocks and 0034 source mismatch repair
+        run: |
+          set -eu
+          python experimental/r20/r236/tests/test_r236_balatinaname.py
+      - name: Verify partial confirmed CUT duration doesn't abort all V3
+        run: |
+          set -eu
+          python - <<'PY'
+          import pathlib,sys
+          p=pathlib.Path('/tmp/r236_runtime/tools/r226_partial_subtitles.py')
+          s=p.read_text()
+          assert 'REVIEW_DURATION_ON_CONFIRMED_CUT' in s and 'durationReview' in s
+          assert 'if m["state"]=="PLACEHOLDER":continue' in s
+          print('PASS partial clips: short CUT review and no placeholder V3 captions')
+          PY
+      - name: Preserve panel JSX and SRC SHA contracts
+        run: |
+          set -eu
+          node --check dist/panel.js
+          python - <<'PY'
+          import zipfile,json,hashlib
+          sha=lambda x:hashlib.sha256(x).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            m=json.loads(z.read('manifest.json'));rows={x['path']:x for x in m['files']}
+            assert m['version']=='2.3.6' and m['format']==1
+            assert set(rows)=={'cep/r20_panel.js','tools/r20_graphics_plans.py',
+              'tools/r230_universal.py','tools/r226_partial_subtitles.py','tools/r236_name_guard.py'}
+            assert rows['tools/r236_name_guard.py']['before_sha256'] is None
+            for p,v in rows.items():assert sha(z.read('payload/'+p))==v['sha256']
+            panel=z.read('payload/cep/r20_panel.js')
+            assert b'ENGINE_VERSION_MISMATCH' in panel and b'recoverOrFallback' in panel
+            assert b'showNameTagReview' in panel and b'onClickCapture' in panel
+            assert not any(p.startswith('cep/jsx/') for p in rows)
+          print('PASS exact five-file SHA payload with unchanged MOGRT writers')
+          PY
