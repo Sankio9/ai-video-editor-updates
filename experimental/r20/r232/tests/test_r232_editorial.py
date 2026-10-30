@@ -113,4 +113,23 @@ with tempfile.TemporaryDirectory() as temp:
     assert all(item['name']=='Ana Exemplu' for item in tag['items'])
     assert not any(i.get('kind')=='REVIEW_MISSING_IDENTITY' for i in tag['skipped'])
     print('PASS reporter turn never inherits previous speaker identity and cannot create a fake NameTag')
+    # CN can also be plain text under PKG without a dedicated Word table.
+    # Explicit VOX/SOT labels (even without a source code) remain Regular.
+    doc=Document()
+    doc.add_paragraph('PKG')
+    doc.add_paragraph('Fetița din imagini nu este admisă la școală din cauza ținutei.')
+    doc.add_paragraph('VOX')
+    doc.add_paragraph('Oamenii nu auziseră despre aceste reguli.')
+    doc.add_paragraph('PKG')
+    doc.add_paragraph('Noile măsuri au stârnit dezbateri în societate.')
+    source=save(doc,temp,'plain_CN')
+    segments=parse(source)['segments']
+    assert len(segments)==3
+    assert [x['reporter_italic'] for x in segments]==[True,False,True]
+    assert [x['kind'] for x in segments]==['narration','interview','narration']
+    subs=build(source,'02')['items']
+    assert any('Fetița din imagini' in x['text'] and x['fontStyle']=='Italic' for x in subs)
+    assert any('Oamenii nu auziseră' in x['text'] and x['fontStyle']=='Regular' for x in subs)
+    assert any('Noile măsuri' in x['text'] and x['fontStyle']=='Italic' for x in subs)
+    print('PASS plain-paragraph CN Italic versus explicit anonymous VOX Regular')
 print('R232 parser acceptance complete')
