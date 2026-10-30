@@ -25,7 +25,7 @@ jobs:
           x=json.load(open('release/r230-independent-graphics-request.json'))
           assert x=={
             'version':'2.3.0',
-            'source_commit':'09e8366ef1e21e0e0fbf5f411d34db8ca79bebdc',
+            'source_commit':'9e8ae4302b323a4793bc50e5f6cb60d29385266b',
             'scope':['tools/r20_graphics_plans.py','tools/r230_universal.py'],
             'policy':'Independent preview V3 V4 V5 only; never modify Montage or existing timeline protections'}
           PY
@@ -33,7 +33,7 @@ jobs:
           ! gh release view v2.3.0 >/dev/null 2>&1
       - uses: actions/checkout@v4
         with:
-          ref: 09e8366ef1e21e0e0fbf5f411d34db8ca79bebdc
+          ref: 9e8ae4302b323a4793bc50e5f6cb60d29385266b
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
@@ -100,7 +100,7 @@ jobs:
           R2.3.0 BETA: universal DOCX editorial recognition for INDEPENDENT graphics 02/03/04. Fixes 'Nu am identificat declarații în DOCX' for scripts with SINCRON, VOX, SOT, PKG, explicit CARTON, uppercase narration, multiple single-paragraph codes/timecodes, speaker names/roles, and two-column newsroom tables. Mode 'Independent din scenariu' uses no Montage, ASR, Project Panel media source, or prior timeline plan. Subtitle 02 writes only identified spoken text in 74-character balanced blocks, with Strikethrough option. NameTag 03 uses only explicitly paired names/titles; unknown identities are skipped with review, never invented. Caption 04 uses explicit CARTON and uppercase editorial graphics with the approved 33-char line/page layout. For scripts without valid named speakers or with no on-screen captions, the module reports no applicable material rather than fabricate one. Existing approved R2.1.2 parser remains primary for known original formats and R2.3 handles the missing-declaration fallback. The MOGRT V3/V4/V5 inserter, preflight/rollback, V5 overwrite protection, independent timing modes, Module 01 and 05, updater, and Stable R1.9.13 are UNCHANGED. Tested locally against nine user-provided DOCX for parsing, including Strikethrough and DOCX tables; full plan integration tested on eight synthetic structural formats and SHA-pinned released generator. Adobe Premiere LIVE MOGRT insertion still requires verification. Beta only.
           EOF
           gh release create v2.3.0 dist/AIVE_UPDATE.zip \
-            --target 09e8366ef1e21e0e0fbf5f411d34db8ca79bebdc \
+            --target 9e8ae4302b323a4793bc50e5f6cb60d29385266b \
             --title 'AI Video Editor R2.3.0 - Independent DOCX Graphics (BETA)' \
             --notes-file /tmp/release_notes.md \
             --prerelease --latest=false
