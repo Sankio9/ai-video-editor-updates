@@ -1,0 +1,74 @@
+name: 'R2.3.2 editorial speaker turn CN and scrollable NameTag modal gate'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r232-editorial.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install DOCX and fetch exact published R2.3.1 Beta baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/aive_release /tmp/aive_runtime/tools dist
+          gh release download v2.3.1 -p AIVE_UPDATE.zip --dir /tmp/aive_release
+          mv /tmp/aive_release/AIVE_UPDATE.zip /tmp/aive_release/v231.zip
+          gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/aive_release
+          mv /tmp/aive_release/AIVE_UPDATE.zip /tmp/aive_release/v230.zip
+      - name: Build exactly two SHA guarded files preserving Premiere writer
+        run: |
+          set -eu
+          python experimental/r20/r232/build_r232.py --prior /tmp/aive_release/v231.zip --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('/tmp/aive_release/v230.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r20_graphics_plans.py').write_bytes(z.read('payload/tools/r20_graphics_plans.py'))
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r230_universal.py').write_bytes(z.read('payload/tools/r230_universal.py'))
+            (pathlib.Path('dist')/'r232_panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+          PY
+      - name: Validate actual Word paragraph styles, tables and NameTag identity
+        run: |
+          set -eu
+          python experimental/r20/r232/tests/test_r232_editorial.py
+          python experimental/r20/r230/tests/test_r230_integration.py
+      - name: Test full scrollable panel modal with real JS source
+        run: |
+          set -eu
+          node --check dist/r232_panel.js
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/r232_panel.js
+      - name: Validate packager, unchanged JSX and unmodified Stable
+        run: |
+          set -eu
+          python - <<'PY'
+          import zipfile,json,hashlib,pathlib
+          sha=lambda x:hashlib.sha256(x).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/aive_release/v231.zip') as old:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.3.2' and m['format']==1
+            r={x['path']:x for x in m['files']}
+            assert set(r)=={'cep/r20_panel.js','tools/r230_universal.py'}
+            for p,item in r.items():
+              assert item['before_sha256']==sha(old.read('payload/'+p))
+              assert item['sha256']==sha(z.read('payload/'+p))
+            assert not any(p.startswith('cep/jsx/') or p.startswith('updater/') for p in r)
+            panel=z.read('payload/cep/r20_panel.js')
+            assert b'ENGINE_VERSION_MISMATCH' in panel and b'onClickCapture' in panel
+            assert b'showNameTagReview' in panel and b'PREMIERE READBACK' in panel
+          print('PASS only two SHA pinned files; protected V3/V4/V5 MOGRT executors unmodified')
+          print('ZIP_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
