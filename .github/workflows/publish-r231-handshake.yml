@@ -1,0 +1,124 @@
+name: 'Publish R2.3.1 Beta independent graphics engine handshake repair'
+on:
+  push:
+    branches: [main]
+    paths: ['release/r231-engine-handshake-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r231-graphics-handshake-only
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Strict request check; Stable freeze
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          x=json.load(open('release/r231-engine-handshake-request.json'))
+          assert x=={
+            'version':'2.3.1',
+            'source_commit':'c198f216fe25c55d784fea33da704f4d6dd3dfae',
+            'scope':['cep/r20_panel.js','tools/r230_universal.py'],
+            'policy':'Version + SHA handshake; preserve V3/V4/V5 preflight and all montage safety'
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.3.1 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: c198f216fe25c55d784fea33da704f4d6dd3dfae
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build from exact currently published assets, not guessed source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/prior /tmp/aive_runtime/tools dist
+          gh release download v2.2.9 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v229.zip
+          gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v230.zip
+          python experimental/r20/r231/build_r231.py --v229 /tmp/prior/v229.zip \
+             --v230 /tmp/prior/v230.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('/tmp/prior/v230.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r20_graphics_plans.py').write_bytes(
+              z.read('payload/tools/r20_graphics_plans.py'))
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r230_universal.py').write_bytes(
+              z.read('payload/tools/r230_universal.py'))
+          PY
+      - name: Full all-module engine handshake, strike and document structure regression
+        run: |
+          set -eu
+          python experimental/r20/r231/tests/test_r231_contract.py
+      - name: Verify exact two-file content, before/after SHA, legacy and R220 retained
+        run: |
+          set -eu
+          python - <<'PY'
+          import hashlib,zipfile,json,pathlib
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z, \
+               zipfile.ZipFile('/tmp/prior/v229.zip') as old, \
+               zipfile.ZipFile('/tmp/prior/v230.zip') as old2:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.3.1' and m['format']==1
+            rows={x['path']:x for x in m['files']}
+            assert set(rows)=={'cep/r20_panel.js','tools/r230_universal.py'}
+            assert rows['cep/r20_panel.js']['before_sha256']==sha(old.read('payload/cep/r20_panel.js'))
+            assert rows['tools/r230_universal.py']['before_sha256']==sha(old2.read('payload/tools/r230_universal.py'))
+            for p,r in rows.items():assert sha(z.read('payload/'+p))==r['sha256']
+            panel=z.read('payload/cep/r20_panel.js')
+            universal=z.read('payload/tools/r230_universal.py')
+            assert b'R2.3.1 BETA' in panel and b'R2.2.9 BETA' not in panel
+            assert b'ENGINE_VERSION_MISMATCH' in panel
+            assert b'R2.1.1-auto-preflight-readable' in panel
+            assert b'R2.3-UNIVERSAL-DOCX-9-FORMATS' in panel
+            assert b'onClickCapture' in panel and b'recoverOrFallback' in panel
+            assert b'r207OmitStruck' in panel and b'a939e588fa4c458c05ceaae2044539564a21ba4c0975c9294089b518ed84d770' in panel
+            assert b'INCLUDE_STRUCK' in universal and b'NOT_APPLICABLE' in universal
+            assert not any(p.startswith('cep/jsx/') or p.startswith('updater/') for p in rows)
+          print('PASS isolated update: original R211 engine allowed; R230 source SHA-locked; live/MOGRT untouched')
+          print('ARCHIVE_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+      - name: Publish Beta and verify uploaded digest; leave Stable unchanged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          cat > /tmp/notes.md <<'EOF'
+          R2.3.1 BETA fixes the verified R2.3.0 independent DOCX error ENGINE_VERSION_MISMATCH for modules 02 Subtitrari V3, 03 NameTag V4, 04 Cartoane V5. The old panel allowed only R2.1.1, while the new reader advertised R2.3; also its strikePolicy enums differed. The panel now explicitly accepts the old approved parser or the new R2.3 parser only when the installed Python file passes its exact pinned SHA-256; Python stdout and DOCX-generated plan version must still match. The universal parser emits the exact approved INCLUDE_STRUCK/OMIT_STRUCK/NOT_APPLICABLE policy. Safety gates (DOCX SHA, per-item MOGRT, target track collision, V5 occupancy, preflight, readback, rollback) are NOT disabled. Both tools/r230_universal.py and cep/r20_panel.js are SHA-guarded with strict before hash for exactly the previous installed public releases. No changes to MOGRT executors, Premiere timeline, Montage 01, VO 05, updater, or Stable R1.9.13. CI passed full actual Python generator plan+stdout contract tests for 02/03/04, Word Strikethrough and multiple DOCX structures, plus private real DOCX offline parsing. LIVE Premiere insertion remains pending.
+          EOF
+          gh release create v2.3.1 dist/AIVE_UPDATE.zip \
+            --target c198f216fe25c55d784fea33da704f4d6dd3dfae \
+            --title 'AI Video Editor R2.3.1 - Independent Graphics Engine Contract (BETA)' \
+            --notes-file /tmp/notes.md \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import hashlib,json,subprocess
+          d=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.3.1']))
+          assert d['prerelease'] and not d['draft'] and len(d['assets'])==1
+          a=d['assets'][0]; expected=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert a['name']=='AIVE_UPDATE.zip' and a['digest']=='sha256:'+expected
+          print('PASS uploaded actual Beta SHA256',expected)
+          PY
