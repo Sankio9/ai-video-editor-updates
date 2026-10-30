@@ -29,6 +29,7 @@ jobs:
           mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v229.zip
           gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/prior
           mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v230.zip
+          echo 'R231 exact predecessor panel source diagnostic gate'
           python experimental/r20/r231/build_r231.py \
             --v229 /tmp/prior/v229.zip --v230 /tmp/prior/v230.zip \
             --out dist/AIVE_UPDATE.zip
