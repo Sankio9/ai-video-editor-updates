@@ -185,3 +185,12 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] Test Word Strikethrough autentic: only crossed-out words removed; 74-char V3 și 33-char V5; nume și funcție V4 explicite.
 - [x] `AIVE_UPDATE.zip` conține **doar** `cep/r20_panel.js`, `tools/r230_universal.py`; SHA-256 înainte și după validate, rollback păstrat.
 - [ ] Acceptance LIVE în Adobe Premiere: inserare MOGRT V3/V4/V5 + readback; nu echivala cu CI PASS.
+
+## R2.3.2 — test de acceptare editorială (2026-10-30)
+- [x] DOCX cu 3 fragmente la aceeași sursă: Regular \`Din Moldova aveți în vedere?\`, Italic \`Da.\`, Regular \`Nu am auzit.\`; trei grupuri distincte și fără a atribui reporterului numele intervievatului.
+- [x] DOCX în două coloane: GEO/credite în stânga, \`Fetița din imagine...\` și continuarea pe rând cu stânga goală în dreapta -> CN Italic, nu omis. \`Gulmira Aslanova / mamă\` în stânga, \`Articolul 48...\` Bold în dreapta -> SOT Regular și un NameTag confirmat.
+- [x] CN ca paragraf obișnuit după PKG -> Italic; VOX explicit fără nume -> Regular și NameTag REVIEW (nu inventat).
+- [x] Popup NameTag: test CEP mock cu 26 intrări, scroll la toate, Continue/Oprește/Escape distincte și fără confirmare automată.
+- [x] Regression toate 8 structuri DOCX cu 02/03/04 prin wrapperul aprobat; exact două fișiere SHA pre/post în Beta.
+- [x] CI \`41025341544\` și publisher \`41025499005\`: PASS. \`AIVE_UPDATE.zip\` SHA256 \`aee27e237918e5a031ae0a7174554d2e81f1eb48943d9a70e9c40196fb18f662\`.
+- [ ] Adobe Premiere LIVE: confirmă subtitlurile Regular/Italic, CN și fereastra modală, NameTag real pe V4; CI nu garantează executarea din Premiere.
