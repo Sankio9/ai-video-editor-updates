@@ -1,0 +1,101 @@
+name: 'Release R234 six-grid DOCX Beta'
+on:
+  push:
+    branches: [main]
+    paths: ['release/r234-request.json']
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify explicit pinned request and stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          x=json.load(open('release/r234-request.json'))
+          assert x=={'version':'2.3.4','source_commit':'6b6d822514d0cadb1a64cd45b1d10da7da702880',
+                     'scope':['cep/r20_panel.js','tools/r230_universal.py']}
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.3.4 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 6b6d822514d0cadb1a64cd45b1d10da7da702880
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build with original asset SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/prior dist
+          gh release download v2.3.3 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v233.zip
+          python experimental/r20/r234/build_r234.py --previous /tmp/prior/v233.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            pathlib.Path('dist/panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+          PY
+      - name: Re-test merged six-grid DOCX and existing NameTag modal
+        run: |
+          set -eu
+          python experimental/r20/r234/tests/test_r234_six_columns.py
+          node --check dist/panel.js
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/panel.js
+      - name: Check exact SHA and file allowlist
+        run: |
+          set -eu
+          python - <<'PY'
+          import hashlib,json,zipfile
+          h=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/prior/v233.zip') as old:
+            m=json.loads(z.read('manifest.json'))
+            assert m['format']==1 and m['version']=='2.3.4'
+            files={x['path']:x for x in m['files']}
+            assert set(files)=={'cep/r20_panel.js','tools/r230_universal.py'}
+            for p,r in files.items():
+              assert r['before_sha256']==h(old.read('payload/'+p))
+              assert r['sha256']==h(z.read('payload/'+p))
+            panel=z.read('payload/cep/r20_panel.js')
+            for item in (b'ENGINE_VERSION_MISMATCH',b'noContentStatus',b'showNameTagReview',
+                         b'recoverOrFallback',b'onClickCapture',b'rollback'):
+              assert item in panel
+          print('PASS two-file SHA, original MOGRT and stable untouched')
+          PY
+      - name: Publish Beta and verify remote SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          cat > /tmp/notes.md <<'EOF'
+          R2.3.4 Beta fixes empty 02/03/04 output when the Word scenario uses merged six-grid tables. Read populated editorial cells after PKG, preserve CN Italic and verified sync Regular + NameTag, and do not invent cards. Only two SHA guarded files updated; MOGRT writer, updater and Stable R1.9.13 unchanged. Automated tests passed; Premiere LIVE acceptance remains pending.
+          EOF
+          gh release create v2.3.4 dist/AIVE_UPDATE.zip --target 6b6d822514d0cadb1a64cd45b1d10da7da702880 \
+            --title 'AI Video Editor R2.3.4 merged DOCX tables BETA' \
+            --notes-file /tmp/notes.md --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import hashlib,json,subprocess
+          r=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.3.4']))
+          sha=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert r['prerelease'] and len(r['assets'])==1
+          assert r['assets'][0]['digest']=='sha256:'+sha
+          print('PASS published asset SHA',sha)
+          PY
