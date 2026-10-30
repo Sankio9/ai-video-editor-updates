@@ -1,0 +1,9 @@
+{
+  "version": "2.3.1",
+  "source_commit": "c198f216fe25c55d784fea33da704f4d6dd3dfae",
+  "scope": [
+    "cep/r20_panel.js",
+    "tools/r230_universal.py"
+  ],
+  "policy": "Version + SHA handshake; preserve V3/V4/V5 preflight and all montage safety"
+}
