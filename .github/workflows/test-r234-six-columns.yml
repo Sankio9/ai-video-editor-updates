@@ -41,7 +41,7 @@ jobs:
         run: |
           set -eu
           python experimental/r20/r234/tests/test_r234_six_columns.py
-      - name: Validate JS syntax, exact file hashes, modal, previous safety
+      - name: Validate literal DOCX paragraphs, JS syntax, hashes and popup safety
         run: |
           set -eu
           node --check dist/panel.js
