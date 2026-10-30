@@ -1,0 +1,116 @@
+name: 'Publish R2.3.5 Beta safe V5 overwrite on sequence clone'
+on:
+  push:
+    branches: [main]
+    paths: ['release/r235-safe-v5-overwrite-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r235-safe-v5-overwrite
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact request, source commit and protected Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          assert json.load(open('release/r235-safe-v5-overwrite-request.json'))=={
+            'version':'2.3.5',
+            'source_commit':'06441633927f2a0dd2b68175a6d088dcb58d2f48',
+            'scope':['cep/r20_panel.js','cep/jsx/r235_v5_clone.jsx'],
+            'policy':'Overwrite V5 only on verified clone, never source; no QE or video/photo destruction'
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.3.5 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 06441633927f2a0dd2b68175a6d088dcb58d2f48
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build from published R2.3.4 with exact before SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/base dist
+          gh release download v2.3.4 -p AIVE_UPDATE.zip --dir /tmp/base
+          mv /tmp/base/AIVE_UPDATE.zip /tmp/base/v234.zip
+          python experimental/r20/r235/build_r235.py --prior /tmp/base/v234.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            pathlib.Path('dist/panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+            pathlib.Path('dist/clone.js').write_bytes(z.read('payload/cep/jsx/r235_v5_clone.jsx'))
+          PY
+      - name: Reproduce guarded V5 clone action with six MOGRTs and failures
+        run: |
+          set -eu
+          node experimental/r20/r235/tests/test_r235_clone.js
+          node --check dist/panel.js
+          node --check dist/clone.js
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/panel.js
+      - name: Final SHA allowlist, approved original MOGRT writer untouched
+        run: |
+          set -eu
+          python - <<'PY'
+          import zipfile,hashlib,json,pathlib
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/base/v234.zip') as before:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.3.5' and m['format']==1
+            files={r['path']:r for r in m['files']}
+            assert set(files)=={'cep/r20_panel.js','cep/jsx/r235_v5_clone.jsx'}
+            for p,r in files.items():assert sha(z.read('payload/'+p))==r['sha256']
+            assert files['cep/r20_panel.js']['before_sha256']==sha(before.read('payload/cep/r20_panel.js'))
+            assert files['cep/jsx/r235_v5_clone.jsx']['before_sha256'] is None
+            panel=z.read('payload/cep/r20_panel.js')
+            script=z.read('payload/cep/jsx/r235_v5_clone.jsx')
+            for k in (b'ENGINE_VERSION_MISMATCH',b'onClickCapture',b'showNameTagReview',
+                      b'noContentStatus',b'recoverOrFallback',b'rollback',
+                      b'Suprascrie V5',b'function evalR235'):
+              assert k in panel
+            assert b'source.clone()' in script and b'item.remove(false,false)' in script
+            assert b'app.enableQE' not in script
+            assert not any(p.startswith('tools/') or p=='cep/jsx/r20_graphics.jsx' for p in files)
+          print('PASS 2-file SHA guard; no original MOGRT writer, source sequence or Stable changes')
+          print('ARCHIVE_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+      - name: Publish prerelease and independently verify remote digest and Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          cat > /tmp/r235_notes.md <<'EOF'
+          R2.3.5 BETA - V5 overwrite button now has a guarded implementation, not a fake confirm followed by STOP. After the user explicitly accepts, Premiere duplicates the active sequence via the documented ExtendScript Sequence.clone API, identifies the unique copy by sequenceID, verifies every copied track and the six existing V5 MOGRT intervals against the original, opens the verified copy, removes V5 MOGRTs ONLY on that copy with non-ripple deletes and per-clip readback, then runs the already approved graphics planner/writer from 00:00 on the copied sequence. The original sequence remains intact, including V5, V1/A1, V3/V4 and all audio. If clone/unexpected media/locked track/readback fails, stop before deleting; when deletion is partial the source remains intact and the clone must be discarded. Never delete original or use QE. Mixed video/photo on V5 intentionally fails closed until separately certified. Only 2 SHA-guarded files: cep/r20_panel.js and NEW cep/jsx/r235_v5_clone.jsx. Original MOGRT writer, DOCX parser, Montage 01, 05, updater and Stable v1.9.13 unchanged. Six Premiere host mocks passed including source preservation and failure cases; real Adobe Premiere 2025 clone and MOGRT insert still require LIVE acceptance before calling this production-ready.
+          EOF
+          gh release create v2.3.5 dist/AIVE_UPDATE.zip \
+            --target 06441633927f2a0dd2b68175a6d088dcb58d2f48 \
+            --title 'AI Video Editor R2.3.5 safe V5 overwrite on sequence copy BETA' \
+            --notes-file /tmp/r235_notes.md --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import hashlib,json,subprocess
+          release=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.3.5']))
+          assert release['prerelease'] and not release['draft'] and len(release['assets'])==1
+          digest=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert release['assets'][0]['name']=='AIVE_UPDATE.zip'
+          assert release['assets'][0]['digest']=='sha256:'+digest
+          print('PASS uploaded Beta SHA',digest)
+          PY
