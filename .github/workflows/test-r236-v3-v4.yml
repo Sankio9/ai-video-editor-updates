@@ -26,8 +26,10 @@ jobs:
           mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v230.zip
           gh release download v2.2.6 -p AIVE_UPDATE.zip --dir /tmp/prior
           mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v226.zip
+          gh release download v2.2.9 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v229.zip
           python experimental/r20/r236/build_r236.py --v230 /tmp/prior/v230.zip \
-             --v226 /tmp/prior/v226.zip --out dist/AIVE_UPDATE.zip
+             --v226 /tmp/prior/v226.zip --v229 /tmp/prior/v229.zip --out dist/AIVE_UPDATE.zip
           python - <<'PY'
           import zipfile,pathlib
           with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
@@ -39,6 +41,12 @@ jobs:
         run: |
           set -eu
           python experimental/r20/r236/tests/test_r236.py
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            pathlib.Path('dist/subtitle_panel.js').write_bytes(z.read('payload/cep/r229_subtitles_panel.js'))
+          PY
+          node --check dist/subtitle_panel.js
       - name: Verify strict SHA before/after, only 2 Python files, no JSX changes
         run: |
           set -eu
@@ -49,10 +57,10 @@ jobs:
             m=json.loads(z.read('manifest.json'))
             assert m['format']==1 and m['version']=='2.3.6'
             f={i['path']:i for i in m['files']}
-            assert set(f)=={'tools/r20_graphics_plans.py','tools/r226_partial_subtitles.py'}
+            assert set(f)=={'tools/r20_graphics_plans.py','tools/r226_partial_subtitles.py','cep/r229_subtitles_panel.js'}
             assert all(i['before_sha256'] and i['sha256']==h(z.read('payload/'+p)) for p,i in f.items())
             assert b'REVIEW_MISSING_IDENTITY' in z.read('payload/tools/r20_graphics_plans.py')
             assert b'skippedConfirmedCuts' in z.read('payload/tools/r226_partial_subtitles.py')
-          print('PASS R236 zero JSX/MOGRT/V1/A1/Stable modifications, original expected SHA guarded')
+          print('PASS R236 no JSX/MOGRT/V1/A1/Stable modifications, source SHA guarded and R229 consent/readback preserved')
           print('ZIP_SHA256',h(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
           PY
