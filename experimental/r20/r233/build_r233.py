@@ -43,7 +43,7 @@ def patch_panel(raw,new_sha):
        status(key,noContentStatus(doc,cfg.num,plan));
        finish();return;
      }""")
- second="""      if(!plan.strikeAnalysisReady||!fs.existsSync(plan.path)||sha(plan.path)!==plan.planSha||"""
+ second="""if(!plan.strikeAnalysisReady||!fs.existsSync(plan.path)||sha(plan.path)!==plan.planSha||"""
  s=single(s,second, """      if(plan.items===0){
         status('subs',noContentStatus(doc,'02',plan));
         finish();return;
