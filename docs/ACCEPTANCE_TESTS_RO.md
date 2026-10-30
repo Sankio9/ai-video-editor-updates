@@ -194,3 +194,9 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] Regression toate 8 structuri DOCX cu 02/03/04 prin wrapperul aprobat; exact două fișiere SHA pre/post în Beta.
 - [x] CI \`41025341544\` și publisher \`41025499005\`: PASS. \`AIVE_UPDATE.zip\` SHA256 \`aee27e237918e5a031ae0a7174554d2e81f1eb48943d9a70e9c40196fb18f662\`.
 - [ ] Adobe Premiere LIVE: confirmă subtitlurile Regular/Italic, CN și fereastra modală, NameTag real pe V4; CI nu garantează executarea din Premiere.
+
+## R2.3.3 — automatic tests and LIVE criterion
+- [x] All 02,03,04 zero eligible content return consistent report and no Python traceback, without invented edits.
+- [x] Script heading allows guarded, explicitly approved Italic CN; article teaser alone never creates content; explicit speech/carton still parsed.
+- [x] Mock modal 26 CUT NameTag accept/stop; SHA-guarded only two files from v2.3.2; Stable v1.9.13 preserved. Runs 41030621990, 41030862629.
+- [ ] LIVE Premiere 2025 installed v2.3.3: status `NIMIC DE INSERAT` only for genuinely inapplicable content; valid marked script still inserts V3/V4/V5 safely; target tracks unchanged if empty. 
