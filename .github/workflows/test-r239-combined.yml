@@ -1,0 +1,96 @@
+name: R239 end-to-end baseline-pinned Montage + DOCX + NameTag tests (NO RELEASE)
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: [.github/workflows/test-r239-combined.yml]
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Obtain pinned prior Beta assets and check literal before SHA values
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/aive_prior /tmp/r236_runtime/tools dist
+          for v in 2.2.5 2.2.6 2.2.7 2.3.0 2.3.4 2.3.5; do
+            mkdir -p /tmp/aive_prior/$v
+            gh release download v$v -p AIVE_UPDATE.zip --dir /tmp/aive_prior/$v
+          done
+          python experimental/r20/r239/build_r239.py \
+            --v225 /tmp/aive_prior/2.2.5/AIVE_UPDATE.zip \
+            --v226 /tmp/aive_prior/2.2.6/AIVE_UPDATE.zip \
+            --v227 /tmp/aive_prior/2.2.7/AIVE_UPDATE.zip \
+            --v230 /tmp/aive_prior/2.3.0/AIVE_UPDATE.zip \
+            --v234 /tmp/aive_prior/2.3.4/AIVE_UPDATE.zip \
+            --v235 /tmp/aive_prior/2.3.5/AIVE_UPDATE.zip \
+            --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            for p in z.namelist():
+              if p.startswith('payload/tools/') and p.endswith('.py'):
+                (pathlib.Path('/tmp/r236_runtime/tools')/pathlib.Path(p).name).write_bytes(z.read(p))
+            for src,name in [
+               ('cep/jsx/r220_montage_writer.jsx','r239_writer.js'),
+               ('cep/r193_workflow.js','r239_workflow.js'),
+               ('cep/r20_panel.js','r239_panel.js')]:
+              pathlib.Path('dist',name).write_bytes(z.read('payload/'+src))
+          PY
+      - name: Verify original DOCX structure 0012, eight timed, eight VO, six NameTag, Strike
+        run: |
+          set -eu
+          python experimental/r20/r236/tests/test_r236_balatinaname.py
+          python experimental/r20/r237/tests/test_r237_balatinashape.py
+      - name: Verify actual packaged Montage JSX, no opaque exception, readback and rollback
+        run: |
+          set -eu
+          AIVE_WRITER_PATH="$PWD/dist/r239_writer.js" node experimental/r20/r238/tests/test_r238_writer.js
+          node --check dist/r239_writer.js
+          node --check dist/r239_workflow.js
+          node --check dist/r239_panel.js
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/r239_panel.js
+      - name: Verify exact before SHA from actual last published source, full patch only
+        run: |
+          set -eu
+          python - <<'PY'
+          import json,hashlib,zipfile,pathlib
+          h=lambda x:hashlib.sha256(x).hexdigest()
+          last={
+            'cep/r193_workflow.js':('2.2.7','1e7a9f3a'),
+            'cep/jsx/r220_montage_writer.jsx':('2.2.5','003834a5'),
+            'cep/r20_panel.js':('2.3.5','55ea148b'),
+            'tools/r20_graphics_plans.py':('2.3.0','daa6562e'),
+            'tools/r230_universal.py':('2.3.4','41711e0b'),
+            'tools/r226_partial_subtitles.py':('2.2.6','90b210ef')}
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            meta=json.loads(z.read('manifest.json'));f={x['path']:x for x in meta['files']}
+            assert meta['version']=='2.3.6' and meta['format']==1
+            assert set(f)==set(last)|{'tools/r236_name_guard.py','tools/r237_coverage.py'}
+            for p,row in f.items():
+              assert h(z.read('payload/'+p))==row['sha256'],p
+              if p not in last:
+                assert row['before_sha256'] is None,p
+                continue
+              ver,prefix=last[p]
+              with zipfile.ZipFile('/tmp/aive_prior/'+ver+'/AIVE_UPDATE.zip') as original:
+                before=h(original.read('payload/'+p))
+              assert before.startswith(prefix),(p,before)
+              assert row['before_sha256']==before,(p,row['before_sha256'],before)
+            assert not any(x.startswith('cep/jsx/r20_graphics') or x.startswith('updater/') for x in f)
+          panel=pathlib.Path('dist/r239_workflow.js').read_text()
+          assert 'AIVE_R220.commitFromFile(' in panel
+          assert 'AIVE_R220.commit('+chr(43)+'params' not in panel
+          assert 'verifyState(state,media' in panel and 'loadLocked(response' in panel
+          print('PASS verified eight files, SHA of last installed payloads, unchanged MOGRT executor and updater')
+          print('ZIP_SHA256',h(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY

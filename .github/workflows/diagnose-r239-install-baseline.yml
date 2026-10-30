@@ -1,0 +1,36 @@
+name: R239 latest installed SHA and module provenance audit
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: [.github/workflows/diagnose-r239-install-baseline.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect every published incremental Beta patch 2.2.0 to 2.3.5
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/aive_releases
+          for tag in 2.2.0 2.2.1 2.2.2 2.2.3 2.2.4 2.2.5 2.2.6 2.2.7 2.2.8 2.2.9 2.3.0 2.3.1 2.3.2 2.3.3 2.3.4 2.3.5; do
+            mkdir -p /tmp/aive_releases/$tag
+            gh release download v$tag -p AIVE_UPDATE.zip --dir /tmp/aive_releases/$tag
+          done
+          python - <<'PY'
+          import zipfile,json,pathlib,hashlib
+          home=pathlib.Path('/tmp/aive_releases')
+          installed={}
+          for ver in "2.2.0 2.2.1 2.2.2 2.2.3 2.2.4 2.2.5 2.2.6 2.2.7 2.2.8 2.2.9 2.3.0 2.3.1 2.3.2 2.3.3 2.3.4 2.3.5".split():
+            with zipfile.ZipFile(home/ver/'AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              print('RELEASE',ver, 'files',[(r['path'],r.get('sha256','')[:12]) for r in m['files']])
+              for r in m['files']:installed[r['path']]={'version':ver,'sha':r['sha256']}
+          for p in ['cep/r20_panel.js','cep/r220_montage_panel.js','cep/jsx/r220_montage_writer.jsx','tools/r20_graphics_plans.py','tools/r230_universal.py','tools/r226_partial_subtitles.py','tools/r220_capture.py','tools/r220_montage_runner.py']:
+            print('LAST_SHA',p,installed.get(p))
+          PY

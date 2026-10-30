@@ -1,0 +1,63 @@
+name: Test R2.2.7 live Montage report recovery (no release)
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r227-recovery.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run R227 live-like Premiere rollback and panel recovery mocks
+        run: |
+          set -eu
+          node experimental/r20/r227/tests/test_r227_recovery.js
+          node experimental/r20/r227/tests/test_r227_panel.js
+          node experimental/r20/r226/tests/test_r226_jsx.js
+          node experimental/r20/r226/tests/test_r226_panel.js
+          echo 'Legacy fallback and live R220 recovery verified'
+          python -m unittest discover -s experimental/r20/r226/tests -p test_*.py -v
+          python -m unittest discover -s experimental/r20/r220/tests -p test_*.py -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+          node --check experimental/r20/r226/cep/r226_partial_subtitles_panel.js
+          node -e "new (require('vm').Script)(require('fs').readFileSync('experimental/r20/r227/cep/jsx/r227_montage_recovery.jsx','utf8'))"
+      - name: Test exact release baseline and three-file Beta packaging (no upload)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/base dist
+          gh release download v2.2.6 -p AIVE_UPDATE.zip --dir /tmp/base
+          mv /tmp/base/AIVE_UPDATE.zip /tmp/base/v226.zip
+          gh release download v2.2.3 -p AIVE_UPDATE.zip --dir /tmp/base
+          mv /tmp/base/AIVE_UPDATE.zip /tmp/base/v223.zip
+          gh release download v2.1.1 -p AIVE_UPDATE.zip --dir /tmp/base
+          mv /tmp/base/AIVE_UPDATE.zip /tmp/base/v211.zip
+          python experimental/r20/r227/build_r227.py --v226 /tmp/base/v226.zip --v223 /tmp/base/v223.zip --v211 /tmp/base/v211.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import json,zipfile,hashlib,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            manifest=json.loads(z.read('manifest.json'))
+            names={x['path'] for x in manifest['files']}
+            assert names=={'cep/r20_panel.js','cep/r193_workflow.js','cep/jsx/r227_montage_recovery.jsx'}
+            w=z.read('payload/cep/r193_workflow.js')
+            assert b'actualC.join' in w and b'confirmedInsertedCount=actualC.length' in w
+            assert b'actual.join' not in w and b'confirmedInsertedCount=actual.length' not in w
+            p=z.read('payload/cep/r20_panel.js')
+            assert b'function recoverOrFallback' in p
+            assert b'if(!report){if(oldClick)' not in p
+            assert b'r207OmitStruck' in p
+            for row in manifest['files']:
+              assert hashlib.sha256(z.read('payload/'+row['path'])).hexdigest()==row['sha256']
+            print('PASS R227: 3-file SHA-bound fix, stable and other categories unmodified')
+          PY

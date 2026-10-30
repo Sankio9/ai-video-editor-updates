@@ -1,0 +1,75 @@
+name: Beta bridge 2.1.4 and Montage 2.2.3 regression
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r214_bootstrap/**'
+      - 'experimental/r20/r223_montage/**'
+      - '.github/workflows/bridge-beta-montage-regression.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download immutable public sources and build two staged update packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/r221 /tmp/r222 dist
+          gh release download v2.2.1 -p AIVE_UPDATE.zip --dir /tmp/r221
+          gh release download v2.2.2 -p AIVE_UPDATE.zip --dir /tmp/r222
+          python experimental/r20/r214_bootstrap/build_r214.py --r221 /tmp/r221/AIVE_UPDATE.zip --out dist/AIVE_UPDATE.zip
+          cp dist/AIVE_UPDATE.zip /tmp/r214-bridge.zip
+          python experimental/r20/r223_montage/build_r223.py --r222 /tmp/r222/AIVE_UPDATE.zip --out dist/R223_UPDATE.zip
+      - name: Verify actual oldest-to-newest Beta selection is fixed and SHA guards stay active
+        run: |
+          python -m unittest discover -s experimental/r20/r214_bootstrap/tests -p test_bootstrap.py -v
+          python - <<'PY'
+          import zipfile,json,hashlib
+          for archive,version,count in [
+              ('dist/AIVE_UPDATE.zip','2.1.4',2),
+              ('dist/R223_UPDATE.zip','2.2.3',7),
+          ]:
+              with zipfile.ZipFile(archive) as z:
+                  m=json.loads(z.read('manifest.json'))
+                  assert m['version']==version and m['format']==1 and len(m['files'])==count
+                  for r in m['files']:
+                    assert hashlib.sha256(z.read('payload/'+r['path'])).hexdigest()==r['sha256']
+                    assert r['before_sha256'] is None or len(r['before_sha256'])==64
+              print('PASS pinned SHA manifest '+version)
+          with zipfile.ZipFile('dist/R223_UPDATE.zip') as z:
+              assert 'updater/beta.py' not in {r['path'] for r in json.loads(z.read('manifest.json'))['files']}
+              assert 'cep/aive_updater_beta.js' not in {r['path'] for r in json.loads(z.read('manifest.json'))['files']}
+              assert b'validate_speech_only(plan)' in z.read('payload/tools/r193_pipeline.py')
+              assert b'window.AIVE_R220_UI.start()' in z.read('payload/cep/r193_workflow.js')
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              py=z.read('payload/updater/beta.py').decode('utf8')
+              assert 'max(choices,key=lambda x:x[0])' in py
+              assert 'min(choices' not in py
+              assert py.count('ensure_ascii=True')==2
+              open('/tmp/beta_bridge.js','wb').write(z.read('payload/cep/aive_updater_beta.js'))
+          PY
+          node --check /tmp/beta_bridge.js
+      - name: Regress Montage with its unchanged Premiere mock and full-document safe planner
+        run: |
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_montage_plan.py -v
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_capture.py -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+      - name: Preserve stable version and release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          echo 'PASS Stable protected, original Beta releases untouched'

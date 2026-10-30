@@ -1,0 +1,77 @@
+name: 'R2.3 validate universal DOCX parser sources (no release)'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r230-reconstruct.yml']
+permissions:
+  contents: write
+jobs:
+  test-and-materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Decode verified R230 source (code only, no uploaded private DOCX)
+        run: |
+          set -eu
+          python - <<'PY'
+          import pathlib,base64,zlib,hashlib,ast
+          root=pathlib.Path('experimental/r20/r230')
+          pieces=[(root/('.source_part'+str(i))).read_text().strip() for i in range(1,5)]
+          data=zlib.decompress(base64.b64decode(''.join(pieces),validate=True))
+          expected='18aa28e9cde7d9ebb3ec349b7a5746844088e8764feda1c8128f7f9938afca4d'
+          assert hashlib.sha256(data).hexdigest()==expected,'SOURCE_SOURCE_SHA_MISMATCH'
+          ast.parse(data.decode('utf8'))
+          target=root/'candidate/tools/r230_universal.py'
+          target.parent.mkdir(parents=True,exist_ok=True)
+          target.write_bytes(data)
+          print('PASS R230 SOURCE_SHA256',expected,'bytes',len(data))
+          PY
+      - name: Static parser tests on nine representative structures, no montage or ASR
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          python - <<'PY'
+          import sys,tempfile
+          from pathlib import Path
+          from docx import Document
+          sys.path.insert(0,'experimental/r20/r230/candidate/tools')
+          from r230_universal import parse
+          cases=[
+            ('reporter', ['TITLU: Știre','SCENARIU','ÎN SATUL TEST S-A DESCHIS O FARMACIE','0230','Ada Ionescu','farmacistă-diriginte','01:10 Bună ziua. 01:13','O NOUĂ FARMACIE VA AJUTA LOCUITORII'],(1,1,1)),
+            ('sot', ['PKG','UN NOU PROIECT ÎN COMUNITATE','SOT [00:20] [00:25]\\nMara Ionescu\\nFiica unui localnic','Așa am aflat de proiect.'],(1,1,1)),
+            ('vox', ['VOX: MARIA, pensionară','0611','00:10–00:15','Este prima dată când aflu.','ATACUL A FOST RAPORTAT DE PRESĂ'],(1,1,1)),
+            ('carton', ['AMBIANȚĂ: Imagini cu oamenii','SINCRON: Ana Ionescu, pensionară','C9625','05:02 - 05:08','Astăzi sunt aici.','CARTON:','Această familie are nevoie de ajutor.'],(1,1,1)),
+            ('pkg_only', ['PKG','PRIMUL CARTON PENTRU ȘTIRE','AL DOILEA CARTON ESTE AICI'],(0,0,1)),
+            ('name_only', ['PKG','Mihai Ionescu','Aceasta este declarația mea.'],(1,0,0)),
+            ('no_names', ['VOX','0651','00:10–00:14','Nu cunosc situația.'],(1,0,0)),
+            ('geo', ['Script:','Geo: Herson','UN TEXT INFORMATIV PENTRU REPORTAJ','Ioana Moldovan, locuitoare din oraș','Ne bucurăm că suntem aici.'],(1,1,1)),
+            ('explicit_carton', ['SINCRON: Eva Ionescu, pensionară','C9623','05:09–05:13','A fost foarte greu.','CARTON: Rezumatul situației pentru oameni.'],(1,1,1))
+          ]
+          with tempfile.TemporaryDirectory() as t:
+            for name,lines,expected in cases:
+              doc=Document()
+              for line in lines:doc.add_paragraph(line.replace('\\n','\n'))
+              f=Path(t)/(name+'.docx');doc.save(f)
+              parsed=parse(f)
+              observed=(bool(parsed['segments']),
+                any(x.get('speaker') and x.get('role') for x in parsed['segments']),
+                bool(parsed['captions']))
+              assert observed==tuple(bool(k) for k in expected),(name,observed,expected)
+              print('PASS',name,'speech',len(parsed['segments']),'cards',len(parsed['captions']))
+          PY
+      - name: Materialize tested Python source onto development branch
+        run: |
+          set -eu
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add experimental/r20/r230/candidate/tools/r230_universal.py
+          if ! git diff --cached --quiet; then
+            git commit -m 'R230 materialize SHA-verified universal independent DOCX parser'
+            git push origin HEAD:feature/r20-independent-graphics-gate
+          fi

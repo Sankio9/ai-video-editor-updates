@@ -1,0 +1,44 @@
+name: R2.2 updater Unicode encoding audit
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/r220-updater-unicode-audit.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect all original public updater Python sources and check data
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import zipfile,base64,io,json
+          for filename in ('release/assets/v1.8.11.zip.b64','release/assets/v1.9.0.zip.b64',
+                           'release/assets/v1.9.3.zip.b64','release/assets/v1.9.4.zip.b64'):
+              archive=base64.b64decode(open(filename,'rb').read())
+              with zipfile.ZipFile(io.BytesIO(archive)) as z:
+                  manifest=json.loads(z.read('manifest.json'))
+                  print('ASSET',filename,'VERSION',manifest['version'])
+                  for row in manifest['files']:
+                      name=row['path']
+                      print('PATH',name)
+                      if not any(x in name.lower() for x in ('updater','probe','channel','github')):continue
+                      raw=z.read('payload/'+name)
+                      print('UPDATER_FILE',name,'LENGTH',len(raw))
+                      try:s=raw.decode('utf8')
+                      except UnicodeDecodeError:continue
+                      for i,line in enumerate(s.splitlines()):
+                          if name.endswith('.py') or any(x in line for x in ('spawn(', 'Răspuns Beta', '--check')):
+                              print('UPDATER_LINE',i+1,line[:250].encode('ascii','backslashreplace').decode('ascii'))
+          PY
+          gh release view v2.2.0 --json tagName,name,body,isPrerelease > /tmp/release.json
+          python - <<'PY'
+          import json
+          x=json.load(open('/tmp/release.json'))
+          print('BETA_TITLE_ESCAPED',x.get('name','').encode('ascii','backslashreplace'))
+          PY

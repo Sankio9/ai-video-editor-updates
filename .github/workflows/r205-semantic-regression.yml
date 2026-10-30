@@ -1,0 +1,38 @@
+name: R2.0.5 Semantic Carton Candidate Checks
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r205/**'
+      - '.github/workflows/r205-semantic-regression.yml'
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax and semantic/unit/property tests (no Premiere LIVE claims)
+        run: |
+          python -m py_compile experimental/r20/r205/candidate/tools/r204_carton_layout.py
+          python -m unittest discover -s experimental/r20/r205/tests -p test_r205_semantics.py -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: CEP mode switch, legacy visibility and restore regression
+        run: |
+          node --check experimental/r20/r205/candidate/cep/r20_panel.js
+          node experimental/r20/r205/tests/test_r205_ui.js
+      - name: Ensure stable release config remains 1.9.13
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('release/next.json')
+          assert json.loads(p.read_text('utf8'))['version']=='1.9.13'
+          assert pathlib.Path('experimental/r20/r204/candidate/tools/r204_carton_layout.py').is_file()
+          assert pathlib.Path('experimental/r20/r205/candidate/tools/r204_carton_layout.py').is_file()
+          print('PASS frozen Stable config and R2.0.4 candidate preserved')
+          PY

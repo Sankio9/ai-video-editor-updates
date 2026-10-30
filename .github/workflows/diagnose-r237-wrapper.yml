@@ -1,0 +1,26 @@
+name: 'R237 inspect published 2.3.0 wrapper entrypoint (diagnostic only)'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/diagnose-r237-wrapper.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dump only source wrapper tail to verify canonical entrypoint
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p /tmp/r237
+          gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/r237
+          python - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('/tmp/r237/AIVE_UPDATE.zip') as z:
+            lines=z.read('payload/tools/r20_graphics_plans.py').decode('utf8').splitlines()
+            for i in range(max(0,len(lines)-95),len(lines)):
+              print('WRAPPER_LINE',i+1,lines[i])
+          PY

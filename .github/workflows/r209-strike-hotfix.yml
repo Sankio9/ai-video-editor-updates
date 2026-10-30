@@ -1,0 +1,36 @@
+name: R2.0.9 — Word strike OOXML diagnosis and false-PASS prevention
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r209/**'
+      - '.github/workflows/r209-strike-hotfix.yml'
+permissions:
+  contents: read
+jobs:
+  strict-word-format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Exact Word parser
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Assert Word OOXML style/deletion handling and fail-closed zero removals
+        run: |
+          python -m py_compile experimental/r20/r209/candidate/tools/r207_docx_strike.py
+          python -m unittest discover -s experimental/r20/r209/tests -p 'test_r209_strike_ooxml.py' -v
+          python -m unittest discover -s experimental/r20/r209/tests -p 'test_r209_planner.py' -v
+      - name: Prior Beta module 02/03/04 source remains unchanged
+        run: |
+          python - <<'PY'
+          import pathlib
+          a=pathlib.Path('experimental/r20/r207/candidate/tools/r20_graphics_plans.py').read_bytes()
+          b=pathlib.Path('experimental/r20/r207/candidate/cep/r20_panel.js').read_bytes()
+          assert b'from r207_docx_strike import extract_strike_policy' in a
+          assert b'STRIKE_FORMAT_AMBIGUOUS' in pathlib.Path('experimental/r20/r209/candidate/tools/r207_docx_strike.py').read_bytes()
+          assert b'--omit-struck' in a and b'OMIT_STRUCK' in b
+          print('PASS: upstream R2.0.7 planner/CEP unchanged, only DOCX helper candidate')
+          PY

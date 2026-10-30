@@ -1,0 +1,46 @@
+name: R2.1.4 Montage pipeline API audit (read-only)
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r214/**'
+      - '.github/workflows/r214-pipeline-api-audit.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable R1.9.13 code archive
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p /tmp/r214
+          gh release download v1.9.13 -p AIVE_UPDATE.zip --dir /tmp/r214
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Print only relevant Montage public-source integration interfaces
+        run: |
+          python - <<'PY'
+          import zipfile,hashlib,re
+          b=open('/tmp/r214/AIVE_UPDATE.zip','rb').read()
+          assert hashlib.sha256(b).hexdigest()=='9ab648fd3472d0a13ce7cb815e953894d961fcc2ea9113f250099720dabb1034'
+          with zipfile.ZipFile('/tmp/r214/AIVE_UPDATE.zip') as z:
+              src=z.read('payload/tools/r193_pipeline.py').decode('utf8')
+          lines=src.splitlines()
+          print('PUBLIC_MONTAGE_PIPELINE_LINES',len(lines))
+          for i,line in enumerate(lines):
+              if any(s in line for s in (
+                 'def run','def build','def generate','def guarded_match','def guarded_write',
+                 'def resolve','def fingerprint','def extract','def analysis','def _',
+                 'r143_build.run','r143_build.generate','mapping=', 'model=', 'device=',
+                 'args=argparse.Namespace', 'fullTextScore', 'validate_speech_only',
+                 'source_length', 'r143_build.suggest_boundaries',
+                 'r143_build.detect_media', 'r143_build.write_results')):
+                  a=max(0,i-2);b=min(len(lines),i+11)
+                  print('\nSNIPPET',i+1)
+                  for n in range(a,b): print('%03d'%(n+1),lines[n])
+          PY

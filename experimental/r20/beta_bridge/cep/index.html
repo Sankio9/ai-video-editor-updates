@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Video Editor — Reportaj</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#202125;color:#eceef1;font:13px Arial,sans-serif}main{padding:12px}h1{font-size:18px;margin:0 0 3px}.tag{color:#8fc9ff}.muted{color:#b3b9c5;font-size:12px;line-height:1.45}details.module{background:#2a2d32;border:1px solid #454a51;border-radius:7px;margin:12px 0;overflow:hidden}details.module>summary{cursor:pointer;padding:14px 12px;list-style:none;display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px}details.module>summary::-webkit-details-marker{display:none}details.module>summary:before{content:'▸';color:#8fc9ff}details.module[open]>summary:before{content:'▾'}details.module>summary .small{margin-left:auto;font-size:10px;font-weight:400;color:#aeb5c0}details.module[open]>summary{border-bottom:1px solid #434951;background:#30343b}.content{padding:12px}input[type=text]{width:100%;background:#17191d;color:#fff;border:1px solid #616873;border-radius:3px;padding:9px;font-size:12px;margin:8px 0}button{width:100%;padding:10px 7px;background:#356a96;color:#fff;border:1px solid #5686ae;border-radius:4px;margin:5px 0;cursor:pointer}button:disabled{opacity:.42;cursor:default}select{width:100%;background:#17191d;color:#eee;border:1px solid #616873;border-radius:4px;padding:9px;margin:4px 0} .r20-inventory{max-height:150px;overflow:auto;white-space:pre-wrap;font-size:11px} button.secondary{background:#373a42;border-color:#565b64}button.choose{width:39px;flex:0 0 39px;font-size:15px;margin:8px 0} .planrow{display:flex;gap:5px;align-items:center}.planrow input{flex:1;min-width:0}.row{display:flex;gap:7px}.row button{flex:1;min-width:0}.status{color:#d2e7f9;font-size:12px;line-height:1.45;white-space:pre-wrap;max-height:190px;overflow:auto;margin:9px 0}.warn{font-size:12px;color:#efc77d;line-height:1.45;margin:6px 0}label{display:flex;gap:7px;align-items:flex-start;font-size:12px;line-height:1.4;margin:9px 0}.log{white-space:pre-wrap;background:#151618;border-radius:4px;padding:10px;font:11px Consolas,monospace;max-height:230px;overflow:auto}details.debug{margin-top:12px}details.debug>summary{cursor:pointer;color:#bdc5d1}hr{border:0;border-top:1px solid #444;margin:13px 0}.info{color:#a7b9c6;font-size:11px;line-height:1.4}
+</style></head><body><main>
+<h1>AI Video Editor <span class="tag">Reportaj</span></h1><div class="muted">Premiere Pro 2025 · Secvența activă · Panou unic</div>
+
+
+<details class="module" id="aiveUpdaterSection"><summary>Actualizări AI Video Editor<span class="small">Updater R1.8.9</span></summary><div class="content">
+<div class="muted">Nu mai descărca patch-uri manual. Verifică versiunea, descarcă actualizarea, apoi salvează și închide Premiere pentru instalare automată.</div>
+<button id="aiveUpdateButton" class="secondary">Verifică actualizări</button>
+<div class="status" id="aiveUpdateStatus">Sursa de actualizări se configurează o singură dată.</div>
+<details class="debug"><summary>Configurare sursă GitHub (o singură dată)</summary>
+<div class="muted">Repository public dedicat actualizărilor, în format OWNER/REPO. Nu publică materialele sau proiectele tale.</div>
+<input type="text" id="aiveRepo" placeholder="OWNER/REPO" aria-label="Repository GitHub pentru actualizări">
+<button class="secondary" id="aiveSaveRepo">Salvează sursa</button></details>
+<div class="warn">Instalarea nu începe cât timp Premiere este deschis. Se creează backup. Dacă nu există o versiune nouă, nimic nu este modificat.</div>
+</div></details>
+<details id="moduleContext" class="module"><summary>00 · Scenariu / Proiect<span class="small">DOCX comun · R1.8.4</span></summary><div class="content">
+<div class="muted">Selectează o singură dată scenariul Word. Modulele 01–05 îl folosesc în comun; planurile JSON existente sunt asociate automat numai dacă aparțin aceluiași DOCX.</div>
+<div class="planrow"><input type="text" id="globalDocx" aria-label="Scenariu comun DOCX" placeholder="Scenariu Word (.docx)"><button id="globalDocxBrowse" class="choose secondary" title="Alege un singur scenariu DOCX">…</button></div>
+<button class="secondary" id="globalPlansCheck">Verifică planurile pentru acest scenariu</button>
+<div class="status" id="globalDocxStatus">Selectează DOCX-ul reportajului. Nu modifică timeline-ul.</div>
+<div class="warn">Planurile existente sunt verificate după numele DOCX și data modificării. După editarea scenariului, regenerează planurile; selecția globală NU le generează automat.</div>
+</div></details>
+<details id="moduleCut" class="module"><summary>01 · Montaj după scenariu<span class="small">R1.5.13</span></summary><div class="content">
+<div class="muted">Folosește planul montaj AI R143 (generat din DOCX). V1/A1, sincronuri și spații VO. Motor UXP aprobat rămâne disponibil separat ca rezervă.</div>
+<div class="planrow"><input type="text" id="cutPlan" aria-label="Plan de montaj R143 JSON" placeholder="Plan *_R143_ALL_CUTS.json"><button class="choose secondary" id="cutBrowse" title="Alege planul JSON">…</button></div>
+<div class="row"><button class="secondary" id="cutCheck">Verifică</button><button id="cutBuild" disabled>Montează</button></div>
+<button class="secondary" id="cutVerify">Verifică rezultatul</button>
+<div class="status" id="cutStatus">Indică planul *_R143_ALL_CUTS.json și apasă Verifică.</div>
+<label><input type="checkbox" id="cutApproved">Am salvat proiectul și am verificat planul. Accept modificarea secvenței active.</label>
+<div class="warn">Noua execuție CEP trebuie testată în Premiere înainte de utilizarea pe materiale importante. Nu suprascrie clipurile existente și nu schimbă secvența.</div>
+</div></details>
+<details id="moduleSubs" class="module"><summary>02 · Subtitrări MOGRT<span class="small">R1.5.15</span></summary><div class="content">
+<div class="muted">Subtitrări pentru TOT reportajul · V3 · max. 74 caractere · Regular / Italic · 16:9. Limite V1 și pauze naturale.</div>
+<div class="planrow"><input type="text" id="subsPlan" aria-label="Plan pentru toate sincronurile R1514" value="D:\AI-Video-Editor\plans\R1514\R1514_ALL_SUBTITLES.json"><button class="choose secondary" id="subsBrowse" title="Alege planul JSON">…</button></div>
+<div class="row"><button class="secondary" id="subsCheck">Verifică</button><button id="subsBuild" disabled>Adaugă subtitrările</button></div>
+<button class="secondary" id="subsVerify">Verifică rezultatul</button>
+<div class="status" id="subsStatus">Selectează planul R1514 și apasă Verifică.</div>
+<label><input type="checkbox" id="subsApproved">Am salvat proiectul și accept inserarea pe V3 în secvența activă.</label>
+<div class="warn">Subtitrările existente pe V3 nu sunt suprascrise.</div>
+</div></details>
+<details id="moduleName" class="module"><summary>03 · NameTag (burtieră)<span class="small">R1.6.2 · Per bloc</span></summary><div class="content">
+<div class="muted">Toate burtierele din DOCX pe V4 (subtitrarile raman pe V3). Name + 2 LINES TITLE, 16:9, With Subtitles. Pentru persoanele anonime se foloseste doar descrierea din scenariu.</div>
+<div class="planrow"><input type="text" id="namePlan" aria-label="Plan NameTag R16 JSON" value="D:\AI-Video-Editor\plans\R161\R161_NAMETAGS_ALL.json"><button class="choose secondary" id="nameBrowse" title="Alege planul JSON">…</button></div>
+<div class="row"><button class="secondary" id="nameCheck">Verifică</button><button id="nameBuild" disabled>Adaugă toate burtierele</button></div>
+<button class="secondary" id="nameVerify">Verifică rezultatul</button>
+<div class="status" id="nameStatus">Genereaza planul R161 si apasa Verifica.</div>
+<label><input type="checkbox" id="nameApproved">Am salvat proiectul si accept inserarea tuturor burtierelor pe V4 in secventa activa.</label>
+<div class="warn">Atentie: vechiul NameTag de test de pe V2 nu este mutat sau sters automat. Sterge-l manual daca dubleaza grafica. V5=Cartoane, V6=Source, V7=GEO raman rezervate.</div>
+</div></details>
+<details id="moduleCaps" class="module"><summary>04 · Cartoane VO (Captions)<span class="small">R1.7 · V5</span></summary><div class="content">
+<div class="muted">Bold / Majuscule din DOCX, 1 carton pe fiecare bloc VO. Template RFERL_Captions_STROKE, 16:9. Timpul provizoriu = spațiile VO din planul R143.</div>
+<div class="planrow"><input type="text" id="capsPlan" aria-label="Plan cartoane R17 JSON" value="D:\AI-Video-Editor\plans\R17\R17_CAPTIONS_ALL.json"><button class="choose secondary" id="capsBrowse" title="Alege planul JSON">…</button></div>
+<div class="row"><button class="secondary" id="capsCheck">Verifică</button><button id="capsBuild" disabled>Adaugă cartoanele</button></div>
+<button class="secondary" id="capsVerify">Verifică rezultatul</button>
+<div id="capsConflict" style="display:none;background:#37312b;border:1px solid #8e7959;border-radius:5px;padding:9px;margin:9px 0">
+  <div id="capsConflictTitle" style="font-size:13px;color:#ffd79a"><strong>⚠ V5 este ocupată.</strong> Materialele pot fi suprascrise. „Eliberează V5” șterge <strong>toate</strong> elementele de pe V5.</div>
+  <details class="debug" style="margin-top:6px;margin-bottom:6px"><summary>Materialele detectate pe V5</summary><div id="capsConflictDetails" class="muted" style="white-space:pre-wrap;max-height:120px;overflow:auto"></div></details>
+  <div class="row"><button id="capsProceed">Suprascrie V5</button><button class="secondary" id="capsClear">Eliberează V5</button></div>
+  <div class="muted" style="margin-top:5px">Sau mută manual materialele, apoi apasă din nou „Verifică”.</div>
+</div>
+<div class="status" id="capsStatus">Generează planul R17 și apasă Verifică.</div>
+<div class="muted">Inserarea are loc pe V5. Pistele nu se creează și nu se mută automat.</div>
+</div></details>
+
+<details id="moduleVo" class="module"><summary>05 · Voice-over Reporter<span class="small">R1.8.2 · Un bloc</span></summary><div class="content">
+<div id="r186Quick" style="padding:9px;border:1px solid #4e5b69;border-radius:5px;margin:3px 0 10px">
+<div class="muted">Alege vocea reporterului și apasă un singur buton. Analiza și ajustarea se execută automat. Prima rulare montează pe o COPIE a secvenței.</div>
+<div class="planrow"><input id="r186VoPath" type="text" placeholder="Fișier VO (.wav, .mp3, .m4a...)" aria-label="Fișierul voice-over"><button class="choose secondary" id="r186VoBrowse" title="Alege Voice-over">…</button></div>
+<button id="r186VoRun">Montează VO</button>
+<div id="r186VoStatus" class="status">Pregătit pentru montajul VO pe A2. DOCX-ul este preluat din modulul 00.</div>
+<div class="warn">Test pe secvență duplicată. Cartoanele V5 nu sunt retimate automat în această etapă.</div></div>
+<details class="debug" id="r186Advanced"><summary>Opțiuni avansate și diagnostic</summary>
+
+<div class="muted">Speech Matching reutilizat din Montaj R1.4.3. Primul test: un bloc VO pe A2. V5 este analizată, fără mutarea cartoanelor.</div>
+<div class="muted" id="r184VoDocxHint">Scenariul DOCX este preluat automat din modulul 00.</div><div class="planrow" style="display:none" aria-hidden="true"><input type="text" id="voDocx" placeholder="Scenariu DOCX"><button class="choose secondary" id="voDocxBrowse" title="Alege DOCX">…</button></div>
+<div class="planrow"><input type="text" id="voMontage" placeholder="Plan R143 montaj"><button class="choose secondary" id="voMontageBrowse" title="Alege plan R143">…</button></div>
+<div class="planrow"><input type="text" id="voAudio" placeholder="Voice-over audio-only importat în Project Panel"><button class="choose secondary" id="voAudioBrowse" title="Alege audio VO">…</button></div>
+<div class="muted">Bloc VO (opțional; gol = primul din DOCX):</div>
+<input type="text" id="voId" placeholder="VO-P4 (sau gol pentru primul bloc)">
+<button id="voAnalyze">1. Analizează VO</button>
+<input type="text" id="voPlan" value="" placeholder="Plan R1.8.2 generat automat" readonly>
+<div class="row"><button class="secondary" id="voCheck">2. Verifică</button><button id="voBuild" disabled>3. Montează A2</button></div>
+<div id="r185PreviewSection" style="margin-top:9px;padding:9px;border:1px solid #52545b;border-radius:4px">
+<div class="muted">R1.8.5 · VO adaptiv după durata reală. Mai întâi calculează diferența și verifică pistele fără montaj.</div>
+<button class="secondary" id="r185VoPreview">Pregătește ajustarea VO (fără montaj)</button>
+<div class="status" id="r185VoPreviewStatus">După „Analizează VO”, apasă pentru calculul deplasării și verificarea pistelor. Nu modifică timeline-ul.</div>
+</div>
+<button class="secondary" id="voVerify">Verifică rezultatul</button>
+<div class="status" id="voStatus">Selectează scenariul R143 și fișierul VO. Folosește o copie de test a secvenței Premiere.</div>
+<label><input id="voApproved" type="checkbox">Am ascultat fragmentul propus, am salvat o copie a proiectului și accept testul de inserare pe A2.</label>
+<div class="warn">Nu insera dacă apar REVIEW sau dacă A2 este ocupată. V5 nu se modifică. Dacă verificarea post-inserare eșuează, NU SALVA proiectul.</div>
+</details>
+</div></details>
+<details class="debug"><summary>Jurnal tehnic</summary><pre id="log" class="log">Pregătit.</pre></details>
+</main><script src="unified_panel.js"></script><script src="r182_vo_panel.js"></script><script src="r184_context.js"></script><script src="r185_vo_preview.js"></script><script src="r186_oneclick.js"></script><script src="aive_updater_panel.js"></script><script src="r20_panel.js"></script><script src="aive_updater_beta.js"></script></body></html>

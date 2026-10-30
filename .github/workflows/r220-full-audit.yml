@@ -1,0 +1,41 @@
+name: R2.2 full wiring audit (public release source only)
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/r220-full-audit.yml']
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Public source archive inspection
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p /tmp/public
+          gh release download v1.9.13 -p AIVE_UPDATE.zip --dir /tmp/public
+          python - <<'PY'
+          import zipfile,base64,io,json
+          base=base64.b64decode(open('release/assets/v1.9.3.zip.b64','rb').read())
+          with zipfile.ZipFile(io.BytesIO(base)) as z:
+              m=json.loads(z.read('manifest.json'))
+              print('BASE_PUBLIC_ASSETS',[(x['path'],x['sha256']) for x in m['files']])
+              for p in ('tools/r143_build.py','cep/r193_workflow.js','cep/jsx/r193_media_probe.jsx'):
+                  name='payload/'+p
+                  if name in z.namelist():
+                      text=z.read(name).decode('utf8');print('\nFILE',p)
+                      for i,line in enumerate(text.splitlines()):
+                          if p.endswith('.js') or p.endswith('.jsx'):
+                              print('%03d'%(i+1),line[:230])
+                          elif any(a in line for a in ('def write_results','def generate','def run(', 'def is_safe','def detect_media','def cut_','asr','events','review','addClip','kind','sourceCode')):
+                              print('%03d'%(i+1),line[:230])
+          with zipfile.ZipFile('/tmp/public/AIVE_UPDATE.zip') as z:
+              p='payload/tools/r193_pipeline.py'
+              print('\nFILE',p)
+              for i,line in enumerate(z.read(p).decode('utf8').splitlines()):
+                  print('%03d'%(i+1),line[:250])
+          PY
