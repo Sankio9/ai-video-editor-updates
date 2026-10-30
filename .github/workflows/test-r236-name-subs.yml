@@ -44,7 +44,7 @@ jobs:
               p.write_bytes(z.read(name))
             pathlib.Path('dist/panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
           PY
-      - name: Diagnose repeated uppercase VO groups, ambianță and six speaker cards
+      - name: Verify all uppercase VO groups are never mistaken for role text
         run: |
           set -eu
           python experimental/r20/r236/tests/test_r236_balatinaname.py
