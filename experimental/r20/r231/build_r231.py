@@ -16,7 +16,7 @@ UNIVERSAL_AFTER="a939e588fa4c458c05ceaae2044539564a21ba4c0975c9294089b518ed84d77
 PANEL="cep/r20_panel.js"
 UNIVERSAL="tools/r230_universal.py"
 OLD_GATE="""if(plan.generatorVersion!=='R2.1.1-auto-preflight-readable'||
-           r.generatorVersion!==plan.generatorVersion)"""
+          r.generatorVersion!==plan.generatorVersion)"""
 NEW_GATE="""var validEngine=plan.generatorVersion==='R2.1.1-auto-preflight-readable';
         if(plan.generatorVersion==='R2.3-UNIVERSAL-DOCX-9-FORMATS'){
           var universalFile=path.join(root,'tools','r230_universal.py');
