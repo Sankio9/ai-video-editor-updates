@@ -221,3 +221,11 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] Test SHA înainte din Beta R2.3.4 și SHA după, numai două fișiere, fără modificări la MOGRT writer existent sau Stable.
 - [ ] Test LIVE Premiere 2025: apăsare «Suprascrie V5 într-o copie sigură», verificare duplicat deschis, V5 original cu toate 6 MOGRT-uri, V5 din copie regenerat de la 00:00 cu readback PASS, V1/A1 etc. neschimbate.
 - [ ] Regula 9:16 max 28–29 caractere pentru cartoane V5 se implementează separat; nu declara acceptată în R2.3.5.
+
+
+## R2.3.7 — Fără omisiuni editoriale în module independente
+- [x] Reproducere synthetic CI `41047703495`: 8 paragrafe timecodate incluzând ambianță 0012, 8 paragrafe uppercase în 5 grupuri, 6 burtiere reintroduse și un paragraf integral tăiat, fără omisiuni.
+- [x] Corecția motorului legacy-first: planul parțial nonempty nu mai este acceptat. Universal este canonic și un coverage gate read-only blochează orice pasaj lipsă.
+- [x] Test de clasificare VO uppercase după nume persoană — nu îl confunda cu rolul NameTag.
+- [ ] Test efectiv cu DOCX original în Premiere: 02 conține primul CUT ambianță și toate celelalte replici netăiate, 04 conține toate blocurile VO, 03 conține exact reaparițiile cerute, fără piste modificate la eroare.
+- [ ] Integrare cu 01 montage Strike și 04 synced after-montage (nu există încă Beta complet validată).
