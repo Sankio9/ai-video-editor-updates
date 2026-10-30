@@ -319,6 +319,9 @@ def parse(docx):
             continue
         if CODE.fullmatch(s):
             flush_upper()
+            # Reintroduced speaker under a fresh explicit source marker is
+            # a NEW NameTag block, even when name/role/code are unchanged.
+            last_identity = None
             src = s
             sync_active=True
             source_i = i
