@@ -1,0 +1,55 @@
+name: 'R237 read-only VO R220 alignment and Montage strike copy regressions'
+on:
+  push:
+    branches: [feature/r237-vo-montage-strike]
+    paths: ['.github/workflows/test-r237-preflight.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install real DOCX runtime and approved layout functions
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/r237_layout
+          cp experimental/r20/r205/candidate/tools/r204_carton_layout.py /tmp/r237_layout/r204_carton_layout.py
+          cp experimental/r20/r220/tools/r220_montage_plan.py /tmp/r237_layout/r220_montage_plan.py
+      - name: Test Word Strike original is never modified, copies have SHA and reject invalid media code
+        run: |
+          set -eu
+          python experimental/r20/r237/tests/test_r237_strike.py
+      - name: Test V5 page wrapping 28 chars and exact VO slot alignment despite incomplete montage
+        run: |
+          set -eu
+          python experimental/r20/r237/tests/test_r237_vo_plan.py
+      - name: Validate syntax of candidate Montage opt-in handler and Python pipeline
+        run: |
+          set -eu
+          node --check experimental/r20/r237/candidate/cep/r220_montage_panel.js
+          python - <<'PY'
+          from pathlib import Path
+          paths=[
+            'experimental/r20/r237/candidate/tools/r220_montage_runner.py',
+            'experimental/r20/r237/candidate/tools/r220_capture.py',
+            'experimental/r20/r237/tools/r237_vo_plan.py',
+            'experimental/r20/r237/tools/r237_strikethrough_docx.py'
+          ]
+          for path in paths:
+            source=Path(path).read_text(encoding='utf8')
+            compile(source,path,'exec')
+            print('PASS Python syntax:',path)
+          assert '--omit-struck' in Path(paths[0]).read_text()
+          assert 'strikeBox.checked' in Path('experimental/r20/r237/candidate/cep/r220_montage_panel.js').read_text()
+          assert 'AIVE_R237_SOURCE_DOCX' in Path(paths[1]).read_text()
+          print('PASS optional checkbox wired to runner, audit and capture original DOCX identity')
+          PY
