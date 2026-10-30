@@ -46,7 +46,8 @@ with tempfile.TemporaryDirectory() as folder:
  merged_line(table,1,"Titlul știrii","Un sumar introductiv, care NU face parte din reportaj.")
  merged_line(table,2,"PKG")
  merged_line(table,3,"Facebook - autor\nGEO - localitate, 7 octombrie",
-             "Prima propoziție a naratorului oferă context.\nA doua propoziție continuă contextul.")
+             "Prima propoziție a naratorului oferă context.")
+ table.rows[3].cells[2].add_paragraph("A doua propoziție continuă contextul.")
  merged_line(table,4,"","Continuarea naratorului trebuie păstrată chiar dacă stânga este goală.")
  merged_line(table,5,"Gulmira Exemplu\nmamă",
              "Primul sincron declarat aparține unei persoane identificate.",True)
