@@ -41,7 +41,10 @@ def build(release229,release230,output):
     before_universal=read(release230,"2.3.0",ZIP230_SHA)[UNIVERSAL]
     if sha(before_universal)!=UNIVERSAL_BEFORE:raise ValueError("UNEXPECTED_UNIVERSAL_BASELINE")
     old=before_panel.decode("utf8")
-    if old.count(OLD_GATE)!=1:raise ValueError("EXPECTED_LEGACY_GATE_NOT_FOUND")
+    if old.count(OLD_GATE)!=1:
+        i=old.find("ENGINE_VERSION_MISMATCH")
+        print("ACTUAL_ENGINE_GATE_SNIPPET",repr(old[max(0,i-520):i+155]) if i>=0 else "NO_ENGINE_VERSION_MISMATCH_TEXT")
+        raise ValueError("EXPECTED_LEGACY_GATE_NOT_FOUND")
     after_panel=old.replace(OLD_GATE,NEW_GATE,1)
     # Visible confirmation of correct CEP bridge; independent module remains
     # unchanged, and R220 readback capability is not touched.
