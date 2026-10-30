@@ -48,6 +48,7 @@ jobs:
         run: |
           set -eu
           python experimental/r20/r236/tests/test_r236_balatinaname.py
+          python experimental/r20/r237/tests/test_r237_balatinashape.py
       - name: Verify partial confirmed CUT duration doesn't abort all V3
         run: |
           set -eu
