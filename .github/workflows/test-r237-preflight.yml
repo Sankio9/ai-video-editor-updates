@@ -28,7 +28,7 @@ jobs:
         run: |
           set -eu
           python experimental/r20/r237/tests/test_r237_strike.py
-      - name: Test V5 page wrapping 28 chars and exact VO slot alignment despite incomplete montage
+      - name: Test V5 28-char pages, validated SHA and exact VO slots even with missing interview audio
         run: |
           set -eu
           python experimental/r20/r237/tests/test_r237_vo_plan.py
