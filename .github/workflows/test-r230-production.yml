@@ -1,0 +1,92 @@
+name: 'R2.3 production parser integration and release asset smoke (NO RELEASE)'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r230-production.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install DOCX runtime and download exact approved source packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/prior
+          gh release download v2.0.0 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v200.zip
+          gh release download v2.1.2 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v212.zip
+          python - <<'PY'
+          import zipfile
+          for v in ('v200','v212'):
+            with zipfile.ZipFile('/tmp/prior/'+v+'.zip') as z:
+              print(v,'zip files',len(z.namelist()))
+              print('SOURCE PATH SAMPLE',z.namelist()[:35])
+          PY
+      - name: Package the SOURCE_SHA fixed candidate with real baseline SHA-256
+        run: |
+          set -eu
+          python experimental/r20/r230/build_r230.py --v212 /tmp/prior/v212.zip --out /tmp/r230_candidate.zip
+          mkdir -p /tmp/aive_runtime
+          python - <<'PY'
+          import zipfile,pathlib
+          dest=pathlib.Path('/tmp/aive_runtime')
+          for name in ['/tmp/prior/v200.zip','/tmp/prior/v212.zip','/tmp/r230_candidate.zip']:
+            with zipfile.ZipFile(name) as z:
+              for p in z.namelist():
+                if not p.startswith('payload/') or p.endswith('/'):continue
+                target=dest/p[len('payload/'):]
+                target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_bytes(z.read(p))
+          print('Materialized tool files', [p.name for p in (dest/'tools').glob('*.py')][:45])
+          PY
+      - name: Smoke three independent plans using genuine production splitter, NameTag and VO layout
+        run: |
+          set -eu
+          PYTHONPATH=/tmp/aive_runtime/tools:/tmp/aive_runtime/scripts python - <<'PY'
+          import sys,tempfile,json
+          from pathlib import Path
+          from docx import Document
+          from r20_graphics_plans import build
+          with tempfile.TemporaryDirectory() as home:
+            f=Path(home)/'other_format.docx'
+            d=Document()
+            for x in ['TITLU: Povestea satului','SINCRON: Ana Ionescu, pensionară','C9623',
+                      '05:01–05:07','Aceasta este o propoziție rostită de persoana intervievată.',
+                      'CARTON:','În acest sat s-a deschis o nouă farmacie.',
+                      'SINCRON: Ana Ionescu, pensionară',
+                      '05:20–05:22','O altă declarație.']:
+                d.add_paragraph(x)
+            d.save(f)
+            for module,track in [('02','V3'),('03','V4'),('04','V5')]:
+              p=build(f,module)
+              assert p['module']==module and p['mode']=='independent'
+              assert not p['containsAudioSync'] and len(p['items'])>0
+              assert p['totalItems']==len(p['items'])
+              if module=='02':assert all(len(x['text'])<=74 for x in p['items'])
+              if module=='04':assert all(len(line)<=33 for x in p['items'] for line in x['physicalLines'])
+              print('PASS',module,track,len(p['items']),'items',p['generatorVersion'])
+          PY
+      - name: Prove no changes to Premiere writer or stable
+        run: |
+          set -eu
+          python - <<'PY'
+          import zipfile,json,hashlib
+          with zipfile.ZipFile('/tmp/r230_candidate.zip') as z:
+            m=json.loads(z.read('manifest.json'))
+            assert m['format']==1 and m['version']=='2.3.0'
+            assert set(x['path'] for x in m['files'])=={'tools/r20_graphics_plans.py','tools/r230_universal.py'}
+            for row in m['files']:
+              assert hashlib.sha256(z.read('payload/'+row['path'])).hexdigest()==row['sha256']
+          print('PASS only 2 tool files, no CEP JSX, V1/A1, updater or Stable files touched')
+          PY
