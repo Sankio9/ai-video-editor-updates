@@ -159,3 +159,10 @@ Categoriile trebuie să aibă selector de mod inteligibil; **nu se schimbă auto
 - Cod Python care scrie JSON pe stdout pentru CEP trebuie să folosească `json.dumps(...,ensure_ascii=True)` pentru rezultate ȘI erori, indiferent de locale; altfel `UnicodeEncodeError` ascunde eroarea reală și cade `Răspuns Beta invalid`.
 - Toate subprocess-urile Python pornite din CEP trebuie să seteze **explicit** `env:Object.assign({},process.env,{PYTHONIOENCODING:'utf-8',PYTHONUTF8:'1'})` sau echivalent verificat, fără să schimbe sistemul în întregime. Erorile locale trebuie raportate prin JSON parsabil, nu prin traceback stderr incomplet.
 - Remediul permanent a fost publicat ca v2.2.1 Beta https://github.com/Sankio9/ai-video-editor-updates/releases/tag/v2.2.1 (doar două fișiere, SHA exact, rollback), după test CI `40734874138`. Următorul release rămâne Beta până la confirmarea LIVE în Premiere.
+
+## R2.3.0 — 02/03/04 Independent din scenariu (2026-10-30)
+- DOCX heterogene: SINCRON/VOX/SOT, cod 4 cifre, timecode punct/două puncte sau lipsă, cartoane uppercase și explicite, GEO/ambianță, document Word cu tabele.
+- Fiecare modul trebuie să ruleze fără Montaj 01, fără media în Project Panel, fără raport R143/R220, fără ASR. 02=SCRIPT_PREVIEW, 03/04=EDITORIAL_PREVIEW; nu eticheta ca audio-sincronizat.
+- Parserul nou R230 e fallback strict numai la neidentificarea declarațiilor/cartoanelor; parserul aprobat rămâne prioritar. 74 char 02; doar nume+funcție pentru 03; 33 char/linie 04. Nu inventa identități ori cartoane absente.
+- MOGRT 02 V3, 03 V4, 04 V5; fără QE; preflight, readback, rollback, acceptare explicită, protecția V5 și Stable R1.9.13 sunt neschimbate.
+- Corpusul utilizatorului: nouă DOCX analizate local, inclusiv celule de tabel și Strikethrough. Nu pune surse private în GitHub. Document complet: `docs/R230_DOCX_FORMATS_INDEPENDENT_RO.md`. Release Beta `v2.3.0`, LIVE Premiere neconfirmat.
