@@ -25,7 +25,7 @@ def derive(original):
     old="      if(a.physicalLines[j].length>33)fail('Line carton >33');"
     new="      if(a.physicalLines[j].length>28)fail('R237 Line carton >28');"
     s=replace_one(s,old,new)
-    old="    return N[p.module];"
+    old="return N[p.module];"
     new="""    if(!p.sequenceId||!/^[a-f0-9]{64}$/.test(text(p.montagePlanSHA256)))
        fail('R237 MONTAGE PLAN IDENTITY INVALID');
     if(!p.limits||p.limits.charactersPerLine!==28||p.limits.lines!==4)
