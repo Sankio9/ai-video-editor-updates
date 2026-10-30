@@ -1,0 +1,122 @@
+name: 'Publish R2.3.2 Beta editorial subtitle CN and NameTag review'
+on:
+  push:
+    branches: [main]
+    paths: ['release/r232-editorial-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r232-editorial-twofile
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify request, exact candidate commit and stable protection
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          assert json.load(open('release/r232-editorial-request.json'))=={
+            'version':'2.3.2',
+            'source_commit':'2948c8d669198a072f5c4e9ade271230b3d39c86',
+            'scope':['cep/r20_panel.js','tools/r230_universal.py'],
+            'policy':'Distinct reporter Italic, CN from plain/table, Regular SOT, full scroll NameTag with explicit choice'}
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.3.2 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 2948c8d669198a072f5c4e9ade271230b3d39c86
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build from exact R2.3.1 published ZIP with SHA before/after
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/aive_release /tmp/aive_runtime/tools dist
+          gh release download v2.3.1 -p AIVE_UPDATE.zip --dir /tmp/aive_release
+          mv /tmp/aive_release/AIVE_UPDATE.zip /tmp/aive_release/v231.zip
+          gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/aive_release
+          mv /tmp/aive_release/AIVE_UPDATE.zip /tmp/aive_release/v230.zip
+          python experimental/r20/r232/build_r232.py --prior /tmp/aive_release/v231.zip --output dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('/tmp/aive_release/v230.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r20_graphics_plans.py').write_bytes(z.read('payload/tools/r20_graphics_plans.py'))
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            (pathlib.Path('/tmp/aive_runtime/tools')/'r230_universal.py').write_bytes(z.read('payload/tools/r230_universal.py'))
+            pathlib.Path('dist/r232_panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+          PY
+      - name: Test style boundaries, CN, SOT, original modules and full popup decisions
+        run: |
+          set -eu
+          python experimental/r20/r232/tests/test_r232_editorial.py
+          python experimental/r20/r230/tests/test_r230_integration.py
+          node --check dist/r232_panel.js
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/r232_panel.js
+      - name: Verify exact scope, SHA and Premiere protection
+        run: |
+          set -eu
+          python - <<'PY'
+          import hashlib,zipfile,json,pathlib
+          sha=lambda x:hashlib.sha256(x).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/aive_release/v231.zip') as old:
+            manifest=json.loads(z.read('manifest.json'))
+            assert manifest['version']=='2.3.2' and manifest['format']==1
+            rows={r['path']:r for r in manifest['files']}
+            assert set(rows)=={'cep/r20_panel.js','tools/r230_universal.py'}
+            for p,r in rows.items():
+              assert r['before_sha256']==sha(old.read('payload/'+p))
+              assert r['sha256']==sha(z.read('payload/'+p))
+            panel=z.read('payload/cep/r20_panel.js')
+            assert b'showNameTagReview' in panel and b'onClickCapture' in panel
+            assert b'ENGINE_VERSION_MISMATCH' in panel and b'R2.3.2 BETA' in panel
+            assert b'recoverOrFallback' in panel
+            assert b'if(!window.confirm(question))' not in panel
+            assert not any(p.startswith('cep/jsx/') or p.startswith('updater/') for p in rows)
+          print('PASS exact two-file patch, no MOGRT JSX, 01, 05, or updater changes')
+          print('ARCHIVE_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+      - name: Publish prerelease only, verify uploaded ZIP SHA and unchanged stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          cat > /tmp/r232.md <<'EOF'
+          R2.3.2 BETA — Editorial independent 02/03 fixes.
+          02 Subtitles: preserve direct Word Italic/Regular run boundaries. The interviewee never shares a subtitle with the reporter: for example the Italic fragment 'Da.' becomes a distinct cue from neighboring Regular dialogue. Word Strikethrough, max 74 chars, reporter speaker identity isolation and existing audio-sync/preview distinctions are preserved.
+          CN narration: include ordinary non-carton text from the RIGHT column of newsroom DOCX tables, including rows with blank LEFT metadata. Unlabeled CN paragraphs after PKG are also Italic. Explicit VOX/SOT remain Regular, even if the speaker is unidentified. CN has NO NameTag and does not become a Carton; only confirmed name+role receives V4.
+          03 NameTag: replace native truncated JavaScript confirm with one scrollable full list of uncertain CUTs, reasons and source codes; explicit Continue or Stop and Escape cancellation BEFORE V4 insertion. Existing per-clip SHA checks, MOGRT readback, collision protection and rollback remain.
+          Only two files updated: cep/r20_panel.js and tools/r230_universal.py; both exact SHA pinned from v2.3.1. All V3/V4/V5 MOGRT JSX writers, Montage 01, VO 05, updater and Stable v1.9.13 unchanged.
+          Tested: synthetic DOCX mixed Word runs, right-only table continuation, ordinary CN vs explicit VOX, name tag identity; previous eight independent source formats and scrollable 26-item CEP mock modal. Adobe Premiere LIVE not certified from CI; requires editorial playback validation. Beta only.
+          EOF
+          gh release create v2.3.2 dist/AIVE_UPDATE.zip \
+            --target 2948c8d669198a072f5c4e9ade271230b3d39c86 \
+            --title 'AI Video Editor R2.3.2 - Editorial Subtitles and NameTag (BETA)' \
+            --notes-file /tmp/r232.md \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import hashlib,json,subprocess
+          r=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.3.2']))
+          assert r['prerelease'] and not r['draft'] and len(r['assets'])==1
+          asset=r['assets'][0];expected=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert asset['name']=='AIVE_UPDATE.zip' and asset['digest']=='sha256:'+expected
+          print('PASS public Beta asset digest SHA256',expected)
+          PY
