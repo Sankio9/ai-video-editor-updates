@@ -1,0 +1,8 @@
+{
+  "version": "2.3.4",
+  "source_commit": "6b6d822514d0cadb1a64cd45b1d10da7da702880",
+  "scope": [
+    "cep/r20_panel.js",
+    "tools/r230_universal.py"
+  ]
+}
