@@ -8,6 +8,7 @@ NAMETAG="tools/r20_graphics_plans.py"
 SUBS="tools/r226_partial_subtitles.py"
 UNIVERSAL="tools/r230_universal.py"
 GUARD="tools/r236_name_guard.py"
+COVERAGE="tools/r237_coverage.py"
 PANEL="cep/r20_panel.js"
 def sha(x):return hashlib.sha256(x).hexdigest()
 def replace(s,old,new):
@@ -25,23 +26,35 @@ def source(f,version,file):
   return data
 def patch_nametag(raw):
  s=raw.decode("utf8")
- old='''        if ("Nu am identificat declarații în DOCX" not in reason and
+ old="""def build(docx,module,separator=SEPARATOR,omit_struck=False):
+    try:
+        return _r230_legacy_build(docx,module,separator,omit_struck)
+    except ValueError as problem:
+        reason=str(problem)
+        if ("Nu am identificat declarații în DOCX" not in reason and
             "Nu există cartoane editoriale în DOCX" not in reason):
             raise
         from r230_universal import build as universal_build
-        return universal_build(docx,module,separator,omit_struck)'''
- new='''        explicit_review=(module=='03' and
-            reason.startswith('NameTag REVIEW: cod sursă DOCX '))
-        if not explicit_review and (
-                "Nu am identificat declarații în DOCX" not in reason and
-                "Nu există cartoane editoriale în DOCX" not in reason):
-            raise
-        from r230_universal import build as universal_build
-        plan=universal_build(docx,module,separator,omit_struck)
-        if explicit_review:
-            from r236_name_guard import check as check_docx_name_anchors
+        return universal_build(docx,module,separator,omit_struck)"""
+ new="""def build(docx,module,separator=SEPARATOR,omit_struck=False):
+    # R2.3.7 root cause: the original legacy-first parser may return a
+    # PARTIAL plan without raising. Do not accept its silent omissions.
+    # Run one universal DOCX parser for ALL independent modules, then
+    # validate that timed dialogue and uppercase VO paragraphs were read.
+    from r230_universal import parse as universal_parse, build as universal_build
+    from r237_coverage import verify as verify_editorial_coverage
+    parsed=universal_parse(docx)
+    coverage=verify_editorial_coverage(docx,parsed,omit_struck,module)
+    plan=universal_build(docx,module,separator,omit_struck)
+    plan['editorialCoverage']=coverage
+    if module=='03' and plan['totalItems']>0:
+        from docx import Document
+        from r236_name_guard import check as check_docx_name_anchors
+        import re as _re
+        visible=[p.text.strip() for p in Document(docx).paragraphs]
+        if any(_re.fullmatch(r'[0-9]{4}',x) for x in visible):
             plan['sourceNameReview']=check_docx_name_anchors(docx,plan)
-        return plan'''
+    return plan"""
  s=replace(s,old,new)
  compile(s,NAMETAG,"exec")
  return s.encode("utf8")
@@ -68,7 +81,8 @@ def build(v230,v226,v234,v235,out):
  universal=(ROOT/"candidate/tools/r230_universal.py").read_bytes()
  subtitles=(ROOT/"candidate/tools/r226_partial_subtitles.py").read_bytes()
  guard=(ROOT/"candidate/tools/r236_name_guard.py").read_bytes()
- for name,raw in ((UNIVERSAL,universal),(SUBS,subtitles),(GUARD,guard)):
+ coverage=(ROOT.parent/"r237/candidate/tools/r237_coverage.py").read_bytes()
+ for name,raw in ((UNIVERSAL,universal),(SUBS,subtitles),(GUARD,guard),(COVERAGE,coverage)):
   compile(raw,name,"exec")
  if b'primar|medic|doctor|locuitor' not in universal:
   raise ValueError("MEDIC_EXPLICIT_ROLE_MISSING")
@@ -77,7 +91,7 @@ def build(v230,v226,v234,v235,out):
  files={
   NAMETAG:patch_nametag(originals[NAMETAG]),
   SUBS:subtitles,
-  UNIVERSAL:universal,GUARD:guard,
+  UNIVERSAL:universal,GUARD:guard,COVERAGE:coverage,
   PANEL:patch_panel(originals[PANEL],originals[UNIVERSAL],universal)
  }
  meta={"format":1,"version":"2.3.6","files":[{
