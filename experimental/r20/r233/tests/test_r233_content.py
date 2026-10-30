@@ -17,7 +17,18 @@ def splitter(text,limit=74):
  if cur:out.append(cur)
  return out
 sys.modules['r20_graphics_plans']=types.SimpleNamespace(split_subtitles_readable=splitter)
-sys.modules['r204_carton_layout']=types.SimpleNamespace(build_pages=lambda x:[])
+def build_pages(text):
+ lines=[];line=''
+ for w in text.split():
+  if line and len(line)+1+len(w)>33:
+   lines.append(line);line=w
+  else:line=(line+' '+w).strip()
+ if line:lines.append(line)
+ return [{'text':' '.join(lines[i:i+4]),
+          'physicalLines':(lines[i:i+4]+['','','',''])[:4],
+          'boldWords':{'0':'','1':'','2':'','3':''},
+          'emphasisPhrases':[]} for i in range(0,len(lines),4)]
+sys.modules['r204_carton_layout']=types.SimpleNamespace(build_pages=build_pages)
 from r230_universal import build,parse
 def save(path,lines):
  d=Document()
