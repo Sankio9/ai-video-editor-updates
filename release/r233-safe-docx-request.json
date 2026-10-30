@@ -1,0 +1,9 @@
+{
+  "version": "2.3.3",
+  "source_commit": "6cbad3f229f7f89af9ac09104e915b211a2ce781",
+  "scope": [
+    "cep/r20_panel.js",
+    "tools/r230_universal.py"
+  ],
+  "policy": "Explicit zero-content read-only diagnostics, no fabricated subtitles, NameTags or captions; safe CN approval"
+}
