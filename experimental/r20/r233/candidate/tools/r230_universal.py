@@ -377,8 +377,12 @@ def parse(docx):
                 candidates.append(r)
         # One sentence can be the article teaser. Require at least two
         # distinct narrative paragraphs to activate automatic CN preview.
-        script_marker=any(re.match(
-            r'(?i)^(?:scenariu|script|narațiune|narator|text narator|cn|voice[ -]?over)(?:\\s*[:–-])?
+        script_marker=any(
+            re.match(r'(?i)^(?:scenariu|script|narațiune|narator|text narator|cn|voice[ -]?over)(?:\\s*[:–-])?'+chr(36),r.get('text','').strip())
+            for r in rows)
+        if len(candidates)>=3 or (script_marker and candidates):
+            start=0 if script_marker else 1
+            for r in candidates[start:]:
                 txt=strip_tc(r['text'])
                 if not txt:
                     continue
@@ -390,7 +394,7 @@ def parse(docx):
                     'raw':r['text'],
                     'text_without_strike':strip_tc(r.get('without_strike',r['text']))})
             warnings.append({'code':'AUTO_CN_PLAIN_SCRIPT_REVIEW',
-                'paragraph':candidates[1]['idx'],
+                'paragraph':candidates[0 if script_marker else 1]['idx'],
                 'text':'Text fără marcaje: previzualizare narator Italic, nu sincron audio.'})
     return {'segments': segments, 'captions': cards, 'warnings': warnings,
             'rows': rows, 'source': docx.name}
