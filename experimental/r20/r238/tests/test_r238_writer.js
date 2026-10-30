@@ -2,7 +2,7 @@
 'use strict';
 const assert=require('assert');
 const fs=require('fs'),vm=require('vm'),path=require('path');
-const source=fs.readFileSync(path.join(__dirname,'../cep/jsx/r220_montage_writer.jsx'),'utf8');
+const source=fs.readFileSync(process.env.AIVE_WRITER_PATH||path.join(__dirname,'../cep/jsx/r220_montage_writer.jsx'),'utf8');
 function mock(opts={}){
 
   const video=[],audio=[],markers=[],events=[];
