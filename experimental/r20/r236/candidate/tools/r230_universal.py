@@ -126,6 +126,10 @@ def looks_role(s):
     t = clean(s)
     if not t or len(t) > 100 or any((t.endswith(x) for x in '.!?')):
         return False
+    # Uppercase newsroom VO often begins with e.g. MEDICII... and is not
+    # a speaker's job title. A short uppercase title remains eligible.
+    if isupper(t) and len(t.split()) > 4:
+        return False
     return bool(re.search('(?i)^(?:primar|medic|doctor|locuitor|locuitoare|farmacist|asistent|student|pensionar|mam[ăa]|fiic[ăa]|deputat|sociolog|șef|sef|angajat|activist|reporter|profesor|președinte|presedinte|director|reprezentant|corpul|ofițer|soldat|militar)', t))
 
 def paragraph_rows(doc):
