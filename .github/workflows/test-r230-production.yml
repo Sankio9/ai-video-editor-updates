@@ -54,6 +54,7 @@ jobs:
         run: |
           set -eu
           python experimental/r20/r230/tests/test_r230_integration.py
+          echo 'Independent document-only and no-speech cases passed'
       - name: Prove no changes to Premiere writer or stable
         run: |
           set -eu
