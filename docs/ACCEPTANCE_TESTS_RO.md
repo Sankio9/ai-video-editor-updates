@@ -229,3 +229,13 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] Test de clasificare VO uppercase după nume persoană — nu îl confunda cu rolul NameTag.
 - [ ] Test efectiv cu DOCX original în Premiere: 02 conține primul CUT ambianță și toate celelalte replici netăiate, 04 conține toate blocurile VO, 03 conține exact reaparițiile cerute, fără piste modificate la eroare.
 - [ ] Integrare cu 01 montage Strike și 04 synced after-montage (nu există încă Beta complet validată).
+
+
+## R2.3.6 — test de acceptare după publicarea Beta
+- [x] Test automat plan 02: primul CUT ambianță 0012 și 8 paragrafe temporizate identificate; bloc Strikethrough integral eliminat la bifa ON.
+- [x] Test automat 03: 6 burtieri verificate explicit pe sursele 0007/0034.
+- [x] Test automat 04 independent: 8 paragrafe uppercase în 5 blocuri, fără omisiuni în plan.
+- [x] Premiere mock: eroare preflight raportată explicit, nu `EvalScript error`; rollback și V1/A1 nemodificate la eșec.
+- [x] Publicare ZIP SHA256 verificată; Stable v1.9.13 intactă. Runs 41085395519 și 41085791571.
+- [ ] Premiere 2025 LIVE: primele 0012, NameTag și Montaj pe copie, readback efectiv; nu echivala CI cu LIVE.
+- [ ] Cerințe anterioare încă neimplementate: bifa Strikethrough în Montaj 01 înainte de ASR și V5 după VO_RESERVE fără blocare ASR generală.
