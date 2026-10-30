@@ -1,0 +1,67 @@
+name: 'R2.3.4 merged 6-column newsroom DOCX parser regression (no release)'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r234-six-columns.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download pinned published v2.3.3 and build only 2 SHA guarded files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/release dist
+          gh release download v2.3.3 -p AIVE_UPDATE.zip --dir /tmp/release
+          mv /tmp/release/AIVE_UPDATE.zip /tmp/release/v233.zip
+          python experimental/r20/r234/build_r234.py --previous /tmp/release/v233.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib,json
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            parser=z.read('payload/tools/r230_universal.py')
+            panel=z.read('payload/cep/r20_panel.js')
+            assert b'R2.3.4 BETA' in panel and b'R2.3.3 BETA' not in panel
+            assert b"boundary = max(1, len(row.cells) // 3)" in parser
+            pathlib.Path('dist/panel.js').write_bytes(panel)
+          PY
+      - name: Reproduce six-column DOCX PKG, merged right source and normal 2-column
+        run: |
+          set -eu
+          python experimental/r20/r234/tests/test_r234_six_columns.py
+      - name: Validate JS syntax, exact file hashes, modal, previous safety
+        run: |
+          set -eu
+          node --check dist/panel.js
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/panel.js
+          python - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          h=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z, zipfile.ZipFile('/tmp/release/v233.zip') as old:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.3.4' and m['format']==1
+            entries={x['path']:x for x in m['files']}
+            assert set(entries)=={'cep/r20_panel.js','tools/r230_universal.py'}
+            for name,entry in entries.items():
+              assert entry['before_sha256']==h(old.read('payload/'+name))
+              assert entry['sha256']==h(z.read('payload/'+name))
+            panel=z.read('payload/cep/r20_panel.js')
+            for name in (b'ENGINE_VERSION_MISMATCH',b'noContentStatus',b'recoverOrFallback',
+                         b'onClickCapture',b'showNameTagReview',b'rollback'):
+              assert name in panel
+            assert not any(n.startswith('cep/jsx/') or n.startswith('updater/') for n in entries)
+          print('PASS SHA guarded 2 files, old approved MOGRT JSX and Stable untouched')
+          print('ZIP_SHA256',h(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
