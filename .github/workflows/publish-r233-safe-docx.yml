@@ -109,7 +109,7 @@ jobs:
             --title 'AI Video Editor R2.3.3 - Independent DOCX safe diagnostics (BETA)' \
             --notes-file /tmp/r233_release_notes.md \
             --prerelease --latest=false
-          test "$(gh api repos/$GH_REPO/releases/latest" --jq .tag_name)" = "v1.9.13"
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
           python - <<'PY'
           import json,hashlib,subprocess
           r=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.3.3']))
