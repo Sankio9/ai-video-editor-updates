@@ -7,7 +7,16 @@ from pathlib import Path
 from docx import Document
 ROOT=Path('/tmp/r236_runtime/tools');sys.path.insert(0,str(ROOT))
 def clean(x):return ' '.join(x.split())
-def pages(x):return []
+def pages(x):
+ lines=[];line=''
+ for word in x.split():
+  if line and len(line)+len(word)+1>28:
+   lines.append(line);line=word
+  else:line=(line+' '+word).strip()
+ if line:lines.append(line)
+ assert len(lines)<=4 and all(len(x)<=28 for x in lines)
+ return [{"text":x,"physicalLines":(lines+['','','',''])[:4],
+          "boldWords":{},"emphasisPhrases":[]}]
 def split(txt,limit=74):
  result=[];part=''
  for w in txt.split():
@@ -61,4 +70,18 @@ with tempfile.TemporaryDirectory() as f:
  finally:G._r230_legacy_build=old
  print('PASS six explicit NameTags recovered despite legacy CODE mismatch; no identities fabricated')
  assert universal_build(p,'02',omit_struck=True)['strikeCutsChanged']>=1
+ # Crucial LIVE regression: old extractor could return a few clips/cards
+ # and silently omit the FIRST ambient + FIRST VO. Canonical independent
+ # 02 and 04 must return those Word paragraphs, even when legacy fails.
+ subtitle=G.build(p,'02')
+ assert subtitle['editorialCoverage']['timedParagraphs']==7,subtitle['editorialCoverage']
+ assert subtitle['editorialCoverage']['verifiedTimedParagraphs']==7
+ assert any('replică înregistrată ambiental' in x['text'] for x in subtitle['items'])
+ assert subtitle['items'][0]['fontStyle']=='Regular'
+ cartons=G.build(p,'04')
+ assert cartons['editorialCoverage']['voParagraphs']==6,cartons['editorialCoverage']
+ assert cartons['editorialCoverage']['verifiedVoParagraphs']==6
+ assert cartons['totalItems']==6,cartons['items']
+ assert 'MEDICII DIN SAT' in cartons['items'][0]['text']
+ print('PASS independent 02 includes first 0012 Ambianță, 7 timed paragraphs; independent 04 includes first VO and all six blocks')
  print('PASS strike handling remains on V3; Medic de familie explicit role preserved')
