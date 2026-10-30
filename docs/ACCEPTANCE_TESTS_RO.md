@@ -178,3 +178,10 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] Strikethrough pe mostrele cu tăieturi; nu apar source/media/geo în textul replicilor, nu se inventează NameTag fără funcție sau VO unde nu există.
 - [x] Paket Beta SHA-256, 2 fișiere numai; writer JSX, 01, 05 și Stable 1.9.13 neatinse.
 - [ ] LIVE Premiere Pro 2025: verifică independent câte un DOCX relevant pe V3/V4/V5 cu preflight/readback și că nu s-a schimbat V1/A1. Nu se declară PASS înaintea confirmării editorului.
+
+## R2.3.1 — reproducer pentru `ENGINE_VERSION_MISMATCH`
+- [x] Reproducere din fișierele **publicate**, nu din surse presupuse: panel v2.2.9 accepta un singur generator, în timp ce v2.3.0 folosea altul.
+- [x] GitHub Actions `41021725735` și release `41021866589` PASS: parser Python real, DOCX create ca SINCRON/VOX/SOT/documentar/GEO, 02/03/04 fiecare independent; validare stdout + plan JSON inclusiv politici Strikethrough/review.
+- [x] Test Word Strikethrough autentic: only crossed-out words removed; 74-char V3 și 33-char V5; nume și funcție V4 explicite.
+- [x] `AIVE_UPDATE.zip` conține **doar** `cep/r20_panel.js`, `tools/r230_universal.py`; SHA-256 înainte și după validate, rollback păstrat.
+- [ ] Acceptance LIVE în Adobe Premiere: inserare MOGRT V3/V4/V5 + readback; nu echivala cu CI PASS.
