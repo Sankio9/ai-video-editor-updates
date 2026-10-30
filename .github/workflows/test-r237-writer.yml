@@ -1,0 +1,35 @@
+name: 'R237 derived Premiere V5 writer and editor timing gate (NO RELEASE)'
+on:
+  push:
+    branches: [feature/r237-vo-montage-strike]
+    paths: ['.github/workflows/test-r237-writer.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Derive exclusively from checked approved R20 JSX executor
+        run: |
+          set -eu
+          python experimental/r20/r237/build_vo_writer.py --source experimental/r20/candidate/cep/jsx/r20_graphics.jsx --output /tmp/r237_writer.js
+          node --check /tmp/r237_writer.js
+          python - <<'PY'
+          from pathlib import Path
+          x=Path('/tmp/r237_writer.js').read_text('utf8')
+          assert 'R237 V5 >28 chars' in x and 'R237 Line carton >28' in x
+          assert 'montage_vo' in x and 'VO_RESERVE_ESTIMATED' in x
+          assert '$._AIVE_R237_VO_' in x
+          for fn in ('validate:validate','buildOne:buildOne','verify:verify','rollback:rollback','otherPrint('):
+            assert fn in x
+          assert 'app.enableQE' not in x
+          print('PASS R237 safe VO renderer syntactically valid, 28 limit, preflight/rollback unchanged')
+          PY
