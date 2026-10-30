@@ -1,0 +1,5 @@
+{
+  "version": "2.3.6",
+  "commit": "c7ad6ac0948c24a6176d0ecc0286f533e8286612",
+  "scope": "Montage JSX file-bridge; complete independent DOCX V3/V4/V5 canonical parsing, source-aware NameTags"
+}
