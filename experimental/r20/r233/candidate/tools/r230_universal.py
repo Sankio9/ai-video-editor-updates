@@ -377,8 +377,130 @@ def parse(docx):
                 candidates.append(r)
         # One sentence can be the article teaser. Require at least two
         # distinct narrative paragraphs to activate automatic CN preview.
-        if len(candidates)>=2:
-            for r in candidates[1:]:
+        script_marker=any(re.match(
+            r'(?i)^(?:scenariu|script|narațiune|narator|text narator|cn|voice[ -]?over)(?:\\s*[:–-])?
+                txt=strip_tc(r['text'])
+                if not txt:
+                    continue
+                block+=1
+                segments.append({'ordinal':len(segments)+1,
+                    'paragraph_start':r['idx'],'paragraph_end':r['idx'],
+                    'source_code':None,'speaker':None,'role':None,'text':txt,
+                    'block':block,'reporter_italic':True,'kind':'auto_cn',
+                    'raw':r['text'],
+                    'text_without_strike':strip_tc(r.get('without_strike',r['text']))})
+            warnings.append({'code':'AUTO_CN_PLAIN_SCRIPT_REVIEW',
+                'paragraph':candidates[1]['idx'],
+                'text':'Text fără marcaje: previzualizare narator Italic, nu sincron audio.'})
+    return {'segments': segments, 'captions': cards, 'warnings': warnings,
+            'rows': rows, 'source': docx.name}
+
+def duration(text, minimum=1.15, maximum=8.0, cps=14):
+    return round(min(maximum, max(minimum, 0.6 + len(text) / cps)), 3)
+
+def build(docx, module, separator=0.75, omit_struck=False):
+    from r20_graphics_plans import split_subtitles_readable
+    from r204_carton_layout import build_pages
+    docx = Path(docx).resolve()
+    if not docx.exists() or docx.suffix.lower() != '.docx':
+        raise ValueError('DOCX invalid / lipsă')
+    if module not in ('02', '03', '04'):
+        raise ValueError('Modul invalid')
+    if not 0 <= separator <= 2:
+        raise ValueError('Separator invalid')
+    if type(omit_struck) != bool:
+        raise ValueError('Strikethrough trebuie boolean')
+    parsed = parse(docx)
+    items = []
+    skipped = []
+    audit = []
+    count = 0
+    cursor = 0.0
+    groupcount = set()
+
+    def add(group, text, seconds, more):
+        nonlocal cursor, count
+        if not text.strip():
+            return
+        if items and items[-1]['groupId'] != group:
+            cursor += separator
+        count += 1
+        cursor = round(cursor, 3)
+        item = {'id': 'R20-%s-%04d' % (module, count), 'groupId': group, 'text': text, 'startSeconds': cursor, 'durationSeconds': seconds}
+        item.update(more)
+        items.append(item)
+        groupcount.add(group)
+        cursor = round(cursor + seconds, 3)
+    if module == '02':
+        for seg in parsed['segments']:
+            before = clean(seg['text'])
+            after = clean(seg['text_without_strike']) if omit_struck else before
+            if before != after:
+                audit.append({'cutId': 'CUT-%02d' % seg['ordinal'], 'paragraph': seg['paragraph_start'], 'before': before, 'after': after})
+            if not after:
+                continue
+            pieces = split_subtitles_readable(after, 74)
+            if clean(' '.join(pieces)) != after:
+                raise ValueError('SUBTITLE_TEXT_LOSS')
+            for part in pieces:
+                add('CUT-%02d' % seg['ordinal'], part, duration(part, 0.9, 6.0, 13), {'fontStyle': 'Italic' if seg['reporter_italic'] else 'Regular', 'sourceParagraph': seg['paragraph_start']})
+    elif module == '03':
+        emitted = set()
+        for seg in parsed['segments']:
+            name = seg['speaker']
+            title = seg['role']
+            block = seg['block']
+            if not name or not title:
+                if seg['reporter_italic'] or seg['kind']=='narration':
+                    skipped.append({'paragraph':seg['paragraph_start'],
+                        'cutId':'CUT-%02d'%seg['ordinal'],
+                        'sourceCode':None,'kind':'SKIP_NARRATION',
+                        'reason':'Reporter/CN: fără NameTag.'})
+                else:
+                    skipped.append({'paragraph':seg['paragraph_start'],
+                        'cutId':'CUT-%02d'%seg['ordinal'],
+                        'sourceCode':seg['source_code'],
+                        'kind':'REVIEW_MISSING_IDENTITY',
+                        'reason':'Nume și funcție necesare; nu inventăm identificarea.'})
+                continue
+            if block in emitted:
+                continue
+            emitted.add(block)
+            add('BLOCK-' + str(block), name, duration(name + ' ' + title, 3.3, 5.5, 16), {'name': name, 'title': title, 'anonymous': False, 'sourceParagraph': seg['paragraph_start']})
+    else:
+        for k, cap in enumerate(parsed['captions']):
+            original = clean(cap['text'])
+            pages = build_pages(original)
+            if not pages or clean(' '.join((x['text'] for x in pages))) != original:
+                raise ValueError('CARTON_TEXT_LOSS bloc ' + str(k + 1))
+            for pageno, page in enumerate(pages):
+                raw = page['text']
+                lines = page['physicalLines']
+                add('VO-' + str(k + 1), raw, duration(raw, 3.0, 9.0, 13.5), {'physicalLines': lines, 'textLine0': lines[0], 'textLines123': '\r'.join(lines[1:]), 'boldWords': page['boldWords'], 'emphasisPhrases': page['emphasisPhrases'], 'colorScheme': 'Orange', 'sourceParagraph': cap['paragraph'], 'page': pageno + 1, 'pageCount': len(pages)})
+    # Zero output is not a crash and never an instruction to touch Premiere.
+    # The CEP must display a clear NOT APPLICABLE message and skip the JSX
+    # writer entirely. Preserve the original plan/metadata integrity checks.
+    summary={'paragraphs':sum(1 for r in parsed['rows'] if r.get('text')),
+             'tables':sum(1 for r in parsed['rows'] if r.get('table')),
+             'speech':len(parsed['segments']),'cartons':len(parsed['captions']),
+             'identified':sum(1 for seg in parsed['segments']
+                              if seg.get('speaker') and seg.get('role')),
+             'warnings':len(parsed['warnings']),
+             'autoCn':any(w.get('code')=='AUTO_CN_PLAIN_SCRIPT_REVIEW'
+                          for w in parsed['warnings'])}
+    if not items:
+        summary['message']=('Nu există nume și funcții explicite pentru NameTag.'
+             if module=='03' else 'Nu există cartoane explicite/uppercase.'
+             if module=='04' else 'Nu sunt declarații identificabile pentru subtitrare.')
+    else:
+        summary['message']='Material editorial identificat.'
+    return {'schema': 'aive-r20-graphics-v1', 'module': module, 'mode': 'independent', 'timing': 'SCRIPT_PREVIEW' if module == '02' else 'EDITORIAL_PREVIEW', 'docx_sha256': hashlib.sha256(docx.read_bytes()).hexdigest(), 'sourceDocx': docx.name, 'separatorSeconds': separator, 'items': items, 'totalItems': len(items), 'groups': len(groupcount), 'skipped': skipped, 'reviewRequired': any((x['kind'] == 'REVIEW_MISSING_IDENTITY' for x in skipped)), 'strikePolicy': ('OMIT_STRUCK' if omit_struck else 'INCLUDE_STRUCK') if module == '02' else 'NOT_APPLICABLE', 'omittedStrikeCuts': [x['cutId'] for x in audit if not x['after']], 'removedStrikeCharacters': sum((len(x['before']) - len(x['after']) for x in audit)), 'strikeCutsChanged': len(audit), 'strikeAudit': audit, 'strikeAnalysisReady': module == '02', 'reviewPolicy': ('EXPLICIT_SKIP_APPROVAL' if any(x['kind']=='REVIEW_MISSING_IDENTITY' for x in skipped) else 'AUTO_AMBIENCE_SKIP' if skipped else 'NONE'), 'containsAudioSync': False, 'generatorVersion': 'R2.3-UNIVERSAL-DOCX-9-FORMATS', 'contentSummary': summary}
+,r.get('text','').strip())
+            for r in rows)
+        if len(candidates)>=3 or (script_marker and candidates):
+            # No explicit script heading: the first prose block is normally
+            # an introductory teaser rather than timed narration.
+            for r in (candidates if script_marker else candidates[1:]):
                 txt=strip_tc(r['text'])
                 if not txt:
                     continue
