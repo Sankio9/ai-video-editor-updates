@@ -11,17 +11,18 @@ sys.path.insert(0,str(TOOLS))
 # Use the exact approved helpers for splitting/layout when present.
 RUNTIME=Path('/tmp/aive_runtime/tools')
 sys.path.insert(1,str(RUNTIME))
-if not (RUNTIME/'r20_graphics_plans.py').exists():
-    def split(t,limit=74):
-        words=t.split();current='';out=[]
-        for w in words:
-            if current and len(current)+1+len(w)>limit:
-                out.append(current);current=w
-            else:current=(current+' '+w).strip()
-        if current:out.append(current)
-        return out
-    sys.modules['r20_graphics_plans']=types.SimpleNamespace(split_subtitles_readable=split)
-    sys.modules['r204_carton_layout']=types.SimpleNamespace(build_pages=lambda t:[])
+# Parser is tested in isolation; the separate production integration suite
+# below exercises the actual released generator with safe test stubs.
+def split(t,limit=74):
+    words=t.split();current='';out=[]
+    for w in words:
+        if current and len(current)+1+len(w)>limit:
+            out.append(current);current=w
+        else:current=(current+' '+w).strip()
+    if current:out.append(current)
+    return out
+sys.modules['r20_graphics_plans']=types.SimpleNamespace(split_subtitles_readable=split)
+sys.modules['r204_carton_layout']=types.SimpleNamespace(build_pages=lambda t:[])
 from r230_universal import parse,build,clean
 
 def save(doc,folder,name):
