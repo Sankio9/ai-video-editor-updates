@@ -46,7 +46,7 @@ jobs:
           set -eu
           python experimental/r20/r232/tests/test_r232_editorial.py
           python experimental/r20/r230/tests/test_r230_integration.py
-      - name: Test full scrollable panel modal with real JS source
+      - name: Test full scrollable panel modal with original CEP one-space indent
         run: |
           set -eu
           node --check dist/r232_panel.js
