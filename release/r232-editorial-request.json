@@ -1,0 +1,9 @@
+{
+  "version": "2.3.2",
+  "source_commit": "2948c8d669198a072f5c4e9ade271230b3d39c86",
+  "scope": [
+    "cep/r20_panel.js",
+    "tools/r230_universal.py"
+  ],
+  "policy": "Distinct reporter Italic, CN from plain/table, Regular SOT, full scroll NameTag with explicit choice"
+}
