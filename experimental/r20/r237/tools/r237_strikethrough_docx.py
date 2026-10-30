@@ -89,7 +89,7 @@ def filter_docx(original,folder):
 
 def verify(source,analysis,manifest_path):
     m=json.loads(Path(manifest_path).read_text(encoding='utf8'))
-    if m.get('schema')!='aive-r237-strike-copy-v1' or
+    if (m.get('schema')!='aive-r237-strike-copy-v1' or
         Path(m.get('sourceDOCX','')).resolve()!=Path(source).resolve() or
         Path(m.get('analysisDOCX','')).resolve()!=Path(analysis).resolve() or
         m.get('originalSHA256')!=sha(Path(source).read_bytes()) or
