@@ -7,7 +7,7 @@ import argparse,hashlib,json,pathlib,zipfile
 ROOT=pathlib.Path(__file__).resolve().parent
 NAMETAG="tools/r20_graphics_plans.py"
 SUBS="tools/r226_partial_subtitles.py"
-PANEL="cep/r229_subtitles_panel.js"
+PANEL="cep/r20_panel.js"
 def sha(x):return hashlib.sha256(x).hexdigest()
 def replace(s,old,new):
  if s.count(old)!=1:raise ValueError("UNKNOWN_UPSTREAM_CODE: "+old[:85])
