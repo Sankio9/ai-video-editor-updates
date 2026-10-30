@@ -33,7 +33,7 @@ jobs:
             pathlib.Path('dist/panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
             pathlib.Path('dist/helper.jsx').write_bytes(z.read('payload/cep/jsx/r235_v5_clone.jsx'))
           PY
-      - name: Test source-preserving Premiere clone V5 deletion and failure safeguards
+      - name: Test clone-only V5 removal and updated NameTag review compatibility
         run: |
           set -eu
           node experimental/r20/r235/tests/test_r235_clone.js
