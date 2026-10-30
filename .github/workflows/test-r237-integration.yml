@@ -1,0 +1,72 @@
+name: 'R237 build true SHA-pinned montage strike and synced V5 Beta candidate (NO RELEASE)'
+on:
+  push:
+    branches: [feature/r237-vo-montage-strike]
+    paths: ['.github/workflows/test-r237-integration.yml']
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download four immutable public predecessor versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/r237 dist
+          for ver in 2.3.5 2.2.3 2.2.4 2.0.0; do
+            gh release download "v$ver" -p AIVE_UPDATE.zip --dir /tmp/r237
+            mv /tmp/r237/AIVE_UPDATE.zip /tmp/r237/v${ver//./}.zip
+          done
+      - name: Build R237 7-file candidate using exact real released source SHA guards
+        run: |
+          set -eu
+          python experimental/r20/r237/build_r237.py \
+             --v235 /tmp/r237/v235.zip \
+             --v223 /tmp/r237/v223.zip \
+             --v224 /tmp/r237/v224.zip \
+             --v200 /tmp/r237/v200.zip \
+             --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib,json
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            for name in ('cep/r20_panel.js','cep/r193_workflow.js','cep/jsx/r237_vo_graphics.jsx'):
+              pathlib.Path('dist/'+name.split('/')[-1].replace('.jsx','.js')).write_bytes(z.read('payload/'+name))
+          PY
+      - name: Test exact packaged JavaScript and montage runner safety
+        run: |
+          set -eu
+          node --check dist/r20_panel.js
+          node --check dist/r193_workflow.js
+          node --check dist/r237_vo_graphics.js
+          node --check experimental/r20/r237/cep/r237_synced_caps_panel.js
+          python experimental/r20/r237/tests/test_r237_strike.py
+          python - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.3.7' and m['format']==1
+            f={r['path']:r for r in m['files']}
+            assert set(f)=={'cep/r193_workflow.js','cep/r20_panel.js',
+              'tools/r220_montage_runner.py','tools/r220_capture.py',
+              'tools/r237_vo_plan.py','tools/r237_strikethrough_docx.py',
+              'cep/jsx/r237_vo_graphics.jsx'}
+            assert all(sha(z.read('payload/'+p))==r['sha256'] for p,r in f.items())
+            for p in ('cep/r193_workflow.js','cep/r20_panel.js','tools/r220_montage_runner.py','tools/r220_capture.py'):
+                assert f[p]['before_sha256']
+            assert all(f[p]['before_sha256'] is None for p in f if p not in
+                ('cep/r193_workflow.js','cep/r20_panel.js','tools/r220_montage_runner.py','tools/r220_capture.py'))
+          print('PASS 7 files strictly source SHA-guarded; no Stable, updater or R20 independent writer changed')
+          PY
