@@ -37,7 +37,7 @@ jobs:
             assert b"boundary = max(1, len(row.cells) // 3)" in parser
             pathlib.Path('dist/panel.js').write_bytes(panel)
           PY
-      - name: Reproduce six-column DOCX PKG, merged right source and normal 2-column
+      - name: Reproduce six-column DOCX PKG, merged right source, ordinary two-column and multi-label panel
         run: |
           set -eu
           python experimental/r20/r234/tests/test_r234_six_columns.py
