@@ -38,7 +38,7 @@ jobs:
           set -eu
           node experimental/r20/r235/tests/test_r235_clone.js
           node --check dist/panel.js
-          node --check dist/helper.jsx
+          node --check < dist/helper.jsx
           node experimental/r20/r232/tests/test_r232_dialog.js dist/panel.js
       - name: Verify immutable source SHA and all approved guards remain
         run: |
