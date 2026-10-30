@@ -213,3 +213,11 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [ ] **Paginare:** maximum 4 rânduri per MOGRT, 1..N pagini, rânduri echilibrate semantic și fără cuvinte rupte sau text pierdut. Pentru text >4×29, creează pagină suplimentară.
 - [ ] **Regresii:** 02 V3 rămâne max 74 caractere; NameTag V4 nemodificat; Orange/Bold, coliziuni V5 și rollback păstrate.
 - [x] **Regula documentată** în Master Spec; [ ] **NU este încă implementată/validată LIVE în generatorul R2.3.4.** Rândurile istorice din aceste teste cu «33» descriu doar vechiul criteriu și nu trebuie folosite ca regulă pentru următorul release.
+
+
+## R2.3.5 — conflict V5, clonare și suprascriere sigură
+- [x] Test CI cu simulare ExtendScript: V5 conține șase MOGRT-uri. Copierea secvenței produce sequenceID nou; șase elemente eliminate NON-RIPPLE exclusiv de pe V5 a copiei; V5 original intact, V1/A1 și celelalte piste neschimbate.
+- [x] Teste negative: inventar diferit, V5 cu video/foto, clonare imposibilă, pistă diferită în copie sau alte piste mutate -> STOP fără ștergere din secvența originală.
+- [x] Test SHA înainte din Beta R2.3.4 și SHA după, numai două fișiere, fără modificări la MOGRT writer existent sau Stable.
+- [ ] Test LIVE Premiere 2025: apăsare «Suprascrie V5 într-o copie sigură», verificare duplicat deschis, V5 original cu toate 6 MOGRT-uri, V5 din copie regenerat de la 00:00 cu readback PASS, V1/A1 etc. neschimbate.
+- [ ] Regula 9:16 max 28–29 caractere pentru cartoane V5 se implementează separat; nu declara acceptată în R2.3.5.
