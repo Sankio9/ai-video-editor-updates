@@ -44,7 +44,7 @@ jobs:
               p.write_bytes(z.read(name))
             pathlib.Path('dist/panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
           PY
-      - name: Verify all six explicit reintroduction blocks and 0034 source repair
+      - name: Verify first 0012 Ambianță, every VO block and six explicit NameTags
         run: |
           set -eu
           python experimental/r20/r236/tests/test_r236_balatinaname.py
