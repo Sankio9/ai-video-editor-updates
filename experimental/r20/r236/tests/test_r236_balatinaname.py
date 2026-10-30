@@ -78,6 +78,10 @@ with tempfile.TemporaryDirectory() as f:
  assert subtitle['editorialCoverage']['verifiedTimedParagraphs']==7
  assert any('replică înregistrată ambiental' in x['text'] for x in subtitle['items'])
  assert subtitle['items'][0]['fontStyle']=='Regular'
+ from r230_universal import parse as parse_audit
+ parsed=parse_audit(p)
+ print('R237 SYNTH VO DEBUG',len(parsed['captions']),[(v['paragraph'],v['text'][:55]) for v in parsed['captions']])
+ print('R237 UPPER ROWS',[(r['idx'],r['text'][:45]) for r in parsed['rows'] if r.get('text') and r['text'].startswith('MEDICII DIN SAT')])
  cartons=G.build(p,'04')
  assert cartons['editorialCoverage']['voParagraphs']==6,cartons['editorialCoverage']
  assert cartons['editorialCoverage']['verifiedVoParagraphs']==6
