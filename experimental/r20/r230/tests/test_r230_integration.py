@@ -41,7 +41,7 @@ from r20_graphics_plans import build
 
 def case(name,paragraphs):
     d=Document()
-    for p in paragraphs:d.add_paragraph(p)
+    for p in paragraphs:d.add_paragraph(p.replace(chr(92)+'n',chr(10)))
     return d
 def verify(doc,expect):
     with tempfile.TemporaryDirectory() as folder:
@@ -83,7 +83,7 @@ verify(case('no_role',['PKG','MIHAIL EXEMPLU','Astăzi am venit aici pentru a di
 # One script has named speakers only inside a 2-column editorial table.
 d=Document(); d.add_paragraph('PKG')
 t=d.add_table(rows=2,cols=2)
-t.cell(0,0).text='Gulmira Exemplu\\nmamă'
+t.cell(0,0).text='Gulmira Exemplu'+chr(10)+'mamă'
 t.cell(0,1).text='Cred că trebuie să protejăm copiii.'
 t.cell(1,0).text='Reporter / Reuters'
 t.cell(1,1).text='Narațiune de lucru fără marcaj de carton'
