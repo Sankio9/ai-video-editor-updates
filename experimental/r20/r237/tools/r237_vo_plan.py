@@ -151,6 +151,7 @@ def build(docx,montage_path,report_path):
     require(items and len(items)<=2000,"R237_NO_VO_CARDS")
     return {"schema":GRAPH_SCHEMA,"r237Schema":SCHEMA,
         "mode":"montage_vo","module":"04","timing":"VO_RESERVE_ESTIMATED",
+        "separatorSeconds":0.75,
         "docx_sha256":digest,"montagePlanSHA256":montage["planSHA256"],
         "sequenceId":identity["sequenceId"],"sourceDocx":Path(docx).name,
         "totalItems":len(items),"items":items,
