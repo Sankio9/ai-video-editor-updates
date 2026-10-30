@@ -67,7 +67,7 @@ def build(paths,out):
    data[p]=after
    m["files"].append({"path":p,"before_sha256":sha(before),"sha256":sha(after)})
   m["files"].sort(key=lambda v:v["path"])
-  assert len(m["files"])==7
+  assert len(m["files"])==8
   dest=pathlib.Path(out);dest.parent.mkdir(parents=True,exist_ok=True)
   with zipfile.ZipFile(dest,"w",zipfile.ZIP_DEFLATED,compresslevel=9) as z:
    z.writestr("manifest.json",json.dumps(m,indent=2,ensure_ascii=True)+"\n")
