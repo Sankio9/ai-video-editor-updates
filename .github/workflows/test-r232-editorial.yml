@@ -41,7 +41,7 @@ jobs:
             (pathlib.Path('/tmp/aive_runtime/tools')/'r230_universal.py').write_bytes(z.read('payload/tools/r230_universal.py'))
             (pathlib.Path('dist')/'r232_panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
           PY
-      - name: Validate actual Word paragraph styles, tables and NameTag identity
+      - name: Validate Word paragraphs and tables with isolated helpers then production generator
         run: |
           set -eu
           python experimental/r20/r232/tests/test_r232_editorial.py
