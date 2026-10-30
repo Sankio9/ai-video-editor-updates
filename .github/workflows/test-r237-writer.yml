@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Verify actual original approved MOGRT JSX exact six-space source and derive safe VO writer
+      - name: Test exact original JSX 5/7 spacing and source-preserving R237 VO derived writer
         run: |
           set -eu
           python experimental/r20/r237/build_vo_writer.py --source experimental/r20/candidate/cep/jsx/r20_graphics.jsx --output /tmp/r237_writer.js
