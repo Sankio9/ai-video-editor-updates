@@ -1,0 +1,116 @@
+name: 'Publish R2.3.0 Beta universal independent DOCX graphics'
+on:
+  push:
+    branches: [main]
+    paths: ['release/r230-independent-graphics-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r230-graphics-only
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify immutable request and stable lock
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          x=json.load(open('release/r230-independent-graphics-request.json'))
+          assert x=={
+            'version':'2.3.0',
+            'source_commit':'09e8366ef1e21e0e0fbf5f411d34db8ca79bebdc',
+            'scope':['tools/r20_graphics_plans.py','tools/r230_universal.py'],
+            'policy':'Independent preview V3 V4 V5 only; never modify Montage or existing timeline protections'}
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.3.0 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 09e8366ef1e21e0e0fbf5f411d34db8ca79bebdc
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Recheck source SHA and synthetics with original production wrapper
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          python - <<'PY'
+          import hashlib,pathlib
+          source=pathlib.Path('experimental/r20/r230/candidate/tools/r230_universal.py').read_bytes()
+          assert hashlib.sha256(source).hexdigest()=='18aa28e9cde7d9ebb3ec349b7a5746844088e8764feda1c8128f7f9938afca4d'
+          print('PASS SOURCE SHA and code-only privacy gate')
+          PY
+          mkdir -p /tmp/prior /tmp/runtime/tools dist
+          gh release download v2.1.2 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v212.zip
+          python experimental/r20/r230/build_r230.py --v212 /tmp/prior/v212.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            for n in z.namelist():
+              if n.startswith('payload/') and n.endswith('.py'):
+                p=pathlib.Path('/tmp/runtime/tools')/n[len('payload/tools/'):]
+                p.write_bytes(z.read(n))
+          PY
+          mkdir -p /tmp/aive_runtime/tools
+          cp /tmp/runtime/tools/*.py /tmp/aive_runtime/tools/
+          python experimental/r20/r230/tests/test_r230_integration.py
+      - name: Verify SHA-only two-file update, Stable and Premiere protection unaffected
+        run: |
+          set -eu
+          python - <<'PY'
+          import pathlib,zipfile,json,hashlib
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/prior/v212.zip') as prior:
+            m=json.loads(z.read('manifest.json'));o=json.loads(prior.read('manifest.json'))
+            assert m['version']=='2.3.0' and m['format']==1
+            x={r['path']:r for r in m['files']}
+            assert set(x)=={'tools/r20_graphics_plans.py','tools/r230_universal.py'}
+            assert x['tools/r230_universal.py']['before_sha256'] is None
+            old=prior.read('payload/tools/r20_graphics_plans.py')
+            new=z.read('payload/tools/r20_graphics_plans.py')
+            assert x['tools/r20_graphics_plans.py']['before_sha256']==sha(old)
+            assert new.startswith(old.split(b'def main():')[0])
+            assert b'_r230_legacy_build' in new and b'def main():' in new
+            assert b'Nu am identificat declara' in new
+            for p,r in x.items():assert sha(z.read('payload/'+p))==r['sha256']
+            assert 'cep/' not in ' '.join(x)
+          print('PASS exact v2.1.2 before SHA, isolated two-file update, Stable and MOGRT executor untouched')
+          print('ARCHIVE_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+      - name: Publish Beta asset with verified digest and stable lock
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          cat > /tmp/release_notes.md <<'EOF'
+          R2.3.0 BETA: universal DOCX editorial recognition for INDEPENDENT graphics 02/03/04. Fixes 'Nu am identificat declarații în DOCX' for scripts with SINCRON, VOX, SOT, PKG, explicit CARTON, uppercase narration, multiple single-paragraph codes/timecodes, speaker names/roles, and two-column newsroom tables. Mode 'Independent din scenariu' uses no Montage, ASR, Project Panel media source, or prior timeline plan. Subtitle 02 writes only identified spoken text in 74-character balanced blocks, with Strikethrough option. NameTag 03 uses only explicitly paired names/titles; unknown identities are skipped with review, never invented. Caption 04 uses explicit CARTON and uppercase editorial graphics with the approved 33-char line/page layout. For scripts without valid named speakers or with no on-screen captions, the module reports no applicable material rather than fabricate one. Existing approved R2.1.2 parser remains primary for known original formats and R2.3 handles the missing-declaration fallback. The MOGRT V3/V4/V5 inserter, preflight/rollback, V5 overwrite protection, independent timing modes, Module 01 and 05, updater, and Stable R1.9.13 are UNCHANGED. Tested locally against nine user-provided DOCX for parsing, including Strikethrough and DOCX tables; full plan integration tested on eight synthetic structural formats and SHA-pinned released generator. Adobe Premiere LIVE MOGRT insertion still requires verification. Beta only.
+          EOF
+          gh release create v2.3.0 dist/AIVE_UPDATE.zip \
+            --target 09e8366ef1e21e0e0fbf5f411d34db8ca79bebdc \
+            --title 'AI Video Editor R2.3.0 - Independent DOCX Graphics (BETA)' \
+            --notes-file /tmp/release_notes.md \
+            --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import hashlib,json,subprocess
+          r=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.3.0']))
+          assert r['prerelease'] and not r['draft'] and len(r['assets'])==1
+          asset=r['assets'][0]
+          digest=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert asset['name']=='AIVE_UPDATE.zip' and asset['digest']=='sha256:'+digest
+          print('PASS public Beta update with matching digest',digest)
+          PY
