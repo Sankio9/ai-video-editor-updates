@@ -1,0 +1,9 @@
+{
+  "version": "2.3.0",
+  "source_commit": "09e8366ef1e21e0e0fbf5f411d34db8ca79bebdc",
+  "scope": [
+    "tools/r20_graphics_plans.py",
+    "tools/r230_universal.py"
+  ],
+  "policy": "Independent preview V3 V4 V5 only; never modify Montage or existing timeline protections"
+}
