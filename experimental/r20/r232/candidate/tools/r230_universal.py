@@ -133,6 +133,7 @@ def parse(docx):
     warnings = []
     section = False
     in_explicit = False
+    sync_active = False
     carton = []
     carton_start = 0
     who = None
@@ -145,7 +146,7 @@ def parse(docx):
     uppercase_i = 0
 
     def flush_card():
-        nonlocal carton, last_identity, who, title, src
+        nonlocal carton, last_identity, who, title, src, sync_active
         text = clean(' '.join(carton))
         if text:
             cards.append({'text': text, 'paragraph': carton_start, 'kind': 'explicit'})
@@ -153,10 +154,11 @@ def parse(docx):
             who = None
             title = ''
             src = None
+            sync_active = False
         carton = []
 
     def flush_upper():
-        nonlocal uppercase, last_identity, who, title, src
+        nonlocal uppercase, last_identity, who, title, src, sync_active
         text = clean(' '.join(uppercase))
         if text:
             cards.append({'text': text, 'paragraph': uppercase_i, 'kind': 'uppercase'})
@@ -164,6 +166,7 @@ def parse(docx):
             who = None
             title = ''
             src = None
+            sync_active = False
         uppercase = []
 
     def voice(text, i, kind='interview', raw=None, filtered=None, italic=False):
@@ -218,6 +221,7 @@ def parse(docx):
                 who=named[0]
                 title=named[1] or clean(labels[1])
                 src=None
+                sync_active=True
                 voice_parts(r,i,kind='table_sot')
             elif r.get('bold'):
                 # Bold text is a possible SOT but lacks a confirmed NameTag.
@@ -225,6 +229,7 @@ def parse(docx):
                 title=''
                 src=None
                 last_identity=None
+                sync_active=True
                 voice_parts(r,i,kind='table_sot',force_italic=False)
             else:
                 # Ordinary right-column text beneath GEO/source/B-roll is CN.
@@ -232,6 +237,7 @@ def parse(docx):
                 title=''
                 src=None
                 last_identity=None
+                sync_active=False
                 voice_parts(r,i,kind='narration',force_italic=True)
             continue
         if s.lower() in ('script:', 'script', 'pkg'):
@@ -240,10 +246,12 @@ def parse(docx):
             flush_card()
             who = None
             title = ''
+            sync_active=False
             continue
         if META.match(s):
             flush_upper()
             flush_card()
+            sync_active=False
             continue
         m = MARK.match(r.get('raw', s).strip())
         if m:
@@ -253,6 +261,7 @@ def parse(docx):
                 flush_card()
                 section = True
                 in_explicit = True
+                sync_active=False
                 carton_start = i
                 if detail:
                     carton.append(detail)
@@ -264,12 +273,14 @@ def parse(docx):
                 who = None
                 title = ''
                 src = None
+                sync_active=False
                 continue
             if label in ('SINCRON', 'SOT', 'VOX'):
                 src = None
                 who = None
                 title = ''
                 last_identity = None
+                sync_active=True
                 payload = re.sub('\\[\\d{1,2}[:.]\\d{2}\\]', '', detail).strip()
                 parts = splitlines(payload)
                 person = split_identity(parts[0]) if parts else None
@@ -286,6 +297,7 @@ def parse(docx):
         if CODE.fullmatch(s):
             flush_upper()
             src = s
+            sync_active=True
             source_i = i
             look = [x for x in rows[j:j + 3] if x['text']]
             if look:
@@ -303,12 +315,14 @@ def parse(docx):
             flush_upper()
             who = person[0]
             title = person[1] or (clean(future[0]['text']) if future else '')
+            sync_active=True
             if not title:
                 warnings.append({'paragraph': i, 'code': 'NAME_WITHOUT_ROLE', 'text': s})
             continue
         if looks_role(s) and who:
             flush_upper()
             title = s
+            sync_active=True
             continue
         if isupper(s) and (not TIMECODE_ONLY.fullmatch(s)):
             nextrow = next((x for x in rows[j:j + 2] if x['text']), None)
@@ -336,8 +350,14 @@ def parse(docx):
         if person and len(s) < 42 and future and TIMECODE_ONLY.fullmatch(future[0]['text']):
             who = person[0]
             title = person[1]
+            sync_active=True
             continue
-        voice_parts(r,i,kind='interview')
+        if not sync_active and not who and not src:
+            # CN written as ordinary paragraphs (not only two-column tables)
+            # is narrator voice, not an anonymous interviewee.
+            voice_parts(r,i,kind='narration',force_italic=True)
+        else:
+            voice_parts(r,i,kind='interview')
     flush_upper()
     flush_card()
     return {'segments': segments, 'captions': cards, 'warnings': warnings, 'rows': rows, 'source': docx.name}
