@@ -70,7 +70,7 @@ jobs:
             m=json.loads(z.read('manifest.json'));rows={x['path']:x for x in m['files']}
             assert m['version']=='2.3.6' and m['format']==1
             assert set(rows)=={'cep/r20_panel.js','tools/r20_graphics_plans.py',
-              'tools/r230_universal.py','tools/r226_partial_subtitles.py','tools/r236_name_guard.py'}
+              'tools/r230_universal.py','tools/r226_partial_subtitles.py','tools/r236_name_guard.py','tools/r237_coverage.py'}
             assert rows['tools/r236_name_guard.py']['before_sha256'] is None
             for p,v in rows.items():assert sha(z.read('payload/'+p))==v['sha256']
             panel=z.read('payload/cep/r20_panel.js')
