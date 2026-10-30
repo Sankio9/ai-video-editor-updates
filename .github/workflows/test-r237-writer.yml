@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Test exact original JSX 5/7 spacing and source-preserving R237 VO derived writer
+      - name: Test source-preserving R237 VO writer syntax and all original guard checks
         run: |
           set -eu
           python experimental/r20/r237/build_vo_writer.py --source experimental/r20/candidate/cep/jsx/r20_graphics.jsx --output /tmp/r237_writer.js
