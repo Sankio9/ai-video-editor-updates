@@ -50,7 +50,7 @@ def verify(doc,expect):
             if module not in expect:
                 try:build(path,module)
                 except ValueError as e:
-                    assert 'Nu există' in str(e) or 'Nicio burtieră' in str(e),(module,str(e))
+                    assert 'Nu există' in str(e) or 'Nicio burtieră' in str(e) or 'Nu sunt declarații' in str(e),(module,str(e))
                 else:raise AssertionError('unexpected invented data: '+module)
                 continue
             p=build(path,module)
