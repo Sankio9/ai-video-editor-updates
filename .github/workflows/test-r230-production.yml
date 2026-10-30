@@ -50,33 +50,10 @@ jobs:
                 target.write_bytes(z.read(p))
           print('Materialized tool files', [p.name for p in (dest/'tools').glob('*.py')][:45])
           PY
-      - name: Smoke three independent plans using genuine production splitter, NameTag and VO layout
+      - name: Test production R2.1.2 wrapper with eight distinct independent DOCX shapes
         run: |
           set -eu
-          PYTHONPATH=/tmp/aive_runtime/tools:/tmp/aive_runtime/scripts python - <<'PY'
-          import sys,tempfile,json
-          from pathlib import Path
-          from docx import Document
-          from r20_graphics_plans import build
-          with tempfile.TemporaryDirectory() as home:
-            f=Path(home)/'other_format.docx'
-            d=Document()
-            for x in ['TITLU: Povestea satului','SINCRON: Ana Ionescu, pensionară','C9623',
-                      '05:01–05:07','Aceasta este o propoziție rostită de persoana intervievată.',
-                      'CARTON:','În acest sat s-a deschis o nouă farmacie.',
-                      'SINCRON: Ana Ionescu, pensionară',
-                      '05:20–05:22','O altă declarație.']:
-                d.add_paragraph(x)
-            d.save(f)
-            for module,track in [('02','V3'),('03','V4'),('04','V5')]:
-              p=build(f,module)
-              assert p['module']==module and p['mode']=='independent'
-              assert not p['containsAudioSync'] and len(p['items'])>0
-              assert p['totalItems']==len(p['items'])
-              if module=='02':assert all(len(x['text'])<=74 for x in p['items'])
-              if module=='04':assert all(len(line)<=33 for x in p['items'] for line in x['physicalLines'])
-              print('PASS',module,track,len(p['items']),'items',p['generatorVersion'])
-          PY
+          python experimental/r20/r230/tests/test_r230_integration.py
       - name: Prove no changes to Premiere writer or stable
         run: |
           set -eu
