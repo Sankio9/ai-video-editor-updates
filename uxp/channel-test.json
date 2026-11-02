@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "channel": "personal-test",
+  "pluginId": "com.aive.uxp.probe",
+  "latest": {
+    "version": "0.2.1",
+    "minPremiere": "25.6.0",
+    "package": null,
+    "notes": "Candidat personal pentru verificarea actualizarilor: instaleaza 0.2.1 din kitul local. Nu este STABLE pentru oficiu."
+  }
+}
