@@ -239,3 +239,14 @@ Afișează explicit rezultatele ca [LOCAL PASS], [PREMIERE LIVE PASS], [FAIL] sa
 - [x] Publicare ZIP SHA256 verificată; Stable v1.9.13 intactă. Runs 41085395519 și 41085791571.
 - [ ] Premiere 2025 LIVE: primele 0012, NameTag și Montaj pe copie, readback efectiv; nu echivala CI cu LIVE.
 - [ ] Cerințe anterioare încă neimplementate: bifa Strikethrough în Montaj 01 înainte de ASR și V5 după VO_RESERVE fără blocare ASR generală.
+
+
+## Acceptare R2.3.7 — matrice DOCX multiplu
+- [x] Structuri sintetice apropiate documentelor reale: `Casa Angelus` VASILE/beneficiar & MARIA/beneficiară apar doar în V4, nu în V3; ambianța rămâne text rostit, nu identificare.
+- [x] `Muncitori străini`: SINCRON+cod+TC în același paragraf Word; Reporter Italic între două răspunsuri Regular; omitere numai fragment Strikethrough, păstrarea textului Regular ulterior; fără NameTag duplicat la întrebare/VO.
+- [x] `Satul Nou`: GEO exclus din V3, identificări cu un singur prenume acceptate doar cu rol explicit.
+- [x] `Cernobîl`: cod 4 cifre fără heading activează secțiunea editorială, prima declarație nu mai dispare, sursa arhivală fără rol NU produce NameTag inventat.
+- [x] `Veterinar`: varianta SINCRON fără două puncte cu cod/timecode în același paragraf, nume și funcție extrase numai în V4.
+- [x] `Balatina`: 8 paragrafe cu timecode, 8 uppercase VO în 5 grupe, 6 blocuri NameTag repetate; first Ambianță 0012 prezentă, pasaj tăiat complet exclus la checkbox ON.
+- [x] CI **41412822464 PASS**, package SHA înainte/după și scope fix 3 fișiere validate.
+- [ ] LIVE Premiere 2025 cu copiile secvențelor: nu afișa textul `VASILE` și `beneficiar` pe V3, inserează V4, corectează Italic/Regular și asigură readback real. Nu declara testele CI drept certificare LIVE.
