@@ -361,6 +361,9 @@ def parse(docx):
             continue
         if CODE.fullmatch(s):
             flush_upper()
+            # A valid four-digit source starts the filmed package even when
+            # there is no AMB/SINCRON heading (e.g. Cernobil begins 7896).
+            section = True
             # Reintroduced speaker under a fresh explicit source marker is
             # a NEW NameTag block, even when name/role/code are unchanged.
             last_identity = None
