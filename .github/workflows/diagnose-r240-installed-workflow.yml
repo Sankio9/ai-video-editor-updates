@@ -1,0 +1,40 @@
+name: R240 inspect actually shipped 2.2.7 R193/R220 bridge
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: [.github/workflows/diagnose-r240-installed-workflow.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read exact shipped R193 workflow and 2.2.5 writer bridge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/v227 /tmp/v225
+          gh release download v2.2.7 -p AIVE_UPDATE.zip --dir /tmp/v227
+          gh release download v2.2.5 -p AIVE_UPDATE.zip --dir /tmp/v225
+          python - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('/tmp/v227/AIVE_UPDATE.zip') as z:
+            content=z.read('payload/cep/r193_workflow.js').decode('utf8')
+          lines=content.splitlines()
+          print('WORKFLOW_LINES',len(lines))
+          for i,v in enumerate(lines):
+            if 'AIVE_R220.commit(' in v or 'r220_montage_writer.jsx' in v or 'function evalJS(' in v or 'function commit(state' in v or 'SUBTITLE_DURATION_UNREADABLE' in v:
+              print('MATCH_WORKFLOW',i+1,repr(v))
+              for j in range(max(0,i-3),min(len(lines),i+7)):
+                print('CONTEXT',j+1,repr(lines[j]))
+          with zipfile.ZipFile('/tmp/v225/AIVE_UPDATE.zip') as z:
+            content=z.read('payload/cep/jsx/r220_montage_writer.jsx').decode('utf8')
+          lines=content.splitlines()
+          print('WRITER_LINES',len(lines))
+          for i,v in enumerate(lines):
+            if 'function commit(' in v or 'function preflight(' in v or 'overwriteClip(' in v or 'return {preflight' in v:
+              print('MATCH_WRITER',i+1,repr(v))
+              for j in range(max(0,i-2),min(len(lines),i+5)):print('WCTX',j+1,repr(lines[j]))
+          PY

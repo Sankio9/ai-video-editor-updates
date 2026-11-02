@@ -1,0 +1,54 @@
+name: R2.1.2 caption balancing candidate
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths:
+      - 'experimental/r20/r212/**'
+      - '.github/workflows/r212-caption-balance.yml'
+permissions:
+  contents: read
+jobs:
+  balance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: DOCX dependencies
+        run: python -m pip install 'python-docx==1.2.0'
+      - name: Balanced 74-char readable captions, short sentence exception and Word-strike
+        run: |
+          set -eu
+          python -m py_compile experimental/r20/r212/candidate/tools/r20_graphics_plans.py
+          python -m unittest discover -s experimental/r20/r212/tests -p 'test_r212_balance.py' -v
+          python -m unittest discover -s experimental/r20/r209/tests -p 'test_r209_strike_ooxml.py' -v
+      - name: CEP one-click and safe Premiere mock must stay intact
+        run: |
+          node --check experimental/r20/r211/candidate/cep/r20_panel.js
+          node experimental/r20/r211/tests/test_r211_ui.js
+          node experimental/r20/r211/tests/test_r211_full_flow.js
+          node experimental/r20/candidate/tests_r20/test_r20_jsx_mock.js
+          node experimental/r20/tests/guard.test.js
+      - name: Keep NameTag and Cartoane protections
+        run: |
+          cd experimental/r20/candidate
+          python -m unittest discover -s tests_r20 -p test_r201_nametag.py -v
+          python -m unittest discover -s tests_r20 -p test_r203_review.py -v
+      - name: Assert R2.1.1 Python-CEP protocol unchanged and Stable protected
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          a=Path('experimental/r20/r212/candidate/tools/r20_graphics_plans.py').read_text('utf8')
+          b=Path('experimental/r20/r211/candidate/cep/r20_panel.js').read_text('utf8')
+          assert "'generatorVersion':'R2.1.1-auto-preflight-readable'" in a
+          assert "R2.1.1-auto-preflight-readable" in b
+          assert 'split_subtitles_readable(original,74)' in a
+          assert json.loads(Path('release/next.json').read_text('utf8'))['version']=='1.9.13'
+          print('PASS R2.1.1 protocol frozen, only subtitle segmentation changed')
+          PY

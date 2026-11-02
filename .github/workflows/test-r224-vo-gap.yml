@@ -1,0 +1,54 @@
+name: Test R2.2 VO gap compatibility (no release)
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r224-vo-gap.yml']
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test original R143 vo_gap handling and all Montage regressions
+        run: |
+          set -eu
+          python -m unittest discover -s experimental/r20/r220/tests -p 'test_*.py' -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+          python -m py_compile experimental/r20/r220/tools/r220_capture.py
+      - name: Verify released payload baseline and create isolated hotfix candidate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/r222 /tmp/r223
+          gh release download v2.2.2 -p AIVE_UPDATE.zip --dir /tmp/r222
+          gh release download v2.2.3 -p AIVE_UPDATE.zip --dir /tmp/r223
+          python - <<'PY'
+          import hashlib,zipfile,json,pathlib
+          original=None
+          for tag in ('r222','r223'):
+              with zipfile.ZipFile('/tmp/'+tag+'/AIVE_UPDATE.zip') as z:
+                  m=json.loads(z.read('manifest.json'))
+                  row=next(x for x in m['files'] if x['path']=='tools/r220_capture.py')
+                  blob=z.read('payload/tools/r220_capture.py')
+                  assert hashlib.sha256(blob).hexdigest()==row['sha256']
+                  if original is None:original=row['sha256']
+                  else:assert original==row['sha256'], 'Installed 2.2.2 and 2.2.3 differ'
+          replacement=pathlib.Path('experimental/r20/r220/tools/r220_capture.py').read_bytes()
+          patched_sha=hashlib.sha256(replacement).hexdigest()
+          assert original!=patched_sha
+          assert b'kind in ("vo","vo_gap"' in replacement
+          assert b'elif original_event.get("kind") in ("vo","vo_gap"' in replacement
+          print('PASS baseline v2.2.2 and v2.2.3 identical SHA',original)
+          print('PASS patched capture SHA',patched_sha)
+          print('PASS patch limited to tools/r220_capture.py for any subsequent release')
+          PY

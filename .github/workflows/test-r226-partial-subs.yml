@@ -1,0 +1,51 @@
+name: R2.2.6 partial montage subtitles candidate tests
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r226-partial-subs.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test partial subtitle plan and safe Premiere mock
+        run: |
+          set -eu
+          python -m unittest discover -s experimental/r20/r226/tests -p test_*.py -v
+          node experimental/r20/r226/tests/test_r226_jsx.js
+          node experimental/r20/r226/tests/test_r226_panel.js
+          node --check experimental/r20/r226/cep/r226_partial_subtitles_panel.js
+          echo 'R226 panel fallback + strict DOCX identity regression completed'
+          python -m py_compile experimental/r20/r226/tools/r226_partial_subtitles.py
+      - name: Validate published panel baseline and Beta state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/r211
+          gh release download v2.1.1 -p AIVE_UPDATE.zip --dir /tmp/r211
+          python - <<'PY'
+          import zipfile,hashlib,json,pathlib
+          with zipfile.ZipFile('/tmp/r211/AIVE_UPDATE.zip') as z:
+            m=json.loads(z.read('manifest.json'))
+            rows={x['path']:x for x in m['files']}
+            assert 'cep/r20_panel.js' in rows
+            raw=z.read('payload/cep/r20_panel.js')
+            assert hashlib.sha256(raw).hexdigest()==rows['cep/r20_panel.js']['sha256']
+            print('RELEASE_PANEL_SHA',rows['cep/r20_panel.js']['sha256'])
+            print('RELEASE_PANEL_LENGTH',len(raw))
+            if b"r207OmitStruck" not in raw:raise ValueError('Loss of Strikethrough feature')
+          src=pathlib.Path('experimental/r20/r211/candidate/cep/r20_panel.js').read_bytes()
+          print('SOURCE_PANEL_SHA',hashlib.sha256(src).hexdigest())
+          print('MATCHES_RELEASE',src==raw)
+          assert src==raw
+          PY

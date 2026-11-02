@@ -1,0 +1,35 @@
+--- a/tools/r20_graphics_plans.py
++++ b/tools/r20_graphics_plans.py
+@@ -9,7 +9,8 @@
+ from reportaj_r1_parse_docx import extract
+ from r193_docx_reader import read as read_r193
+ from r161_prepare_nametags import card_for, editorial_block, source_headers
+-from r171_layout import split_cards, highlight_by_words, clean
++from r171_layout import clean
++from r204_carton_layout import build_pages
+ from r153_prepare import split_balanced
+@@ -101,14 +102,15 @@
+         if not captions:raise ValueError('Nu există cartoane editoriale în DOCX')
+         for j,block in enumerate(captions):
+             original=clean(block['text'])
+-            pages=split_cards(original)
+-            if not pages or clean(' '.join(raw for raw,_ in pages))!=original:
++            pages=build_pages(original)
++            if not pages or clean(' '.join(page['text'] for page in pages))!=original:
+                 raise ValueError('Textul cartonului a fost modificat: bloc '+str(j+1))
+-            for k,(raw,slots) in enumerate(pages):
+-                bold,_=highlight_by_words(raw,slots)
++            for k,page in enumerate(pages):
++                raw=page['text']; slots=page['physicalLines']; bold=page['boldWords']
+                 add('VO-'+str(j+1),raw,duration_for(raw,minimum=3,maximum=9,cps=13.5),
+                     {'physicalLines':slots,'textLine0':slots[0],'textLines123':'\r'.join(slots[1:]),
+-                     'boldWords':bold,'colorScheme':'Orange','sourceParagraph':block['paragraph'],
++                     'boldWords':bold,'emphasisPhrases':page['emphasisPhrases'],
++                     'colorScheme':'Orange','sourceParagraph':block['paragraph'],
+                      'page':k+1,'pageCount':len(pages)})
+@@ -118,7 +120,7 @@
+             'docx_sha256':hashlib.sha256(docx.read_bytes()).hexdigest(),
+             'sourceDocx':docx.name,'separatorSeconds':separator,'items':items,
+             'totalItems':len(items),'groups':len({a['groupId'] for a in items}),
+-            'skipped':skipped,'containsAudioSync':False,'generatorVersion':'R2.0-candidate'}
++            'skipped':skipped,'containsAudioSync':False,'generatorVersion':'R2.0.4-layout-candidate'}

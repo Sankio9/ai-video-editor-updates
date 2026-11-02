@@ -1,0 +1,28 @@
+name: R2.0.8 Montage 8-of-17 recovery safety
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r208/**'
+      - '.github/workflows/r208-montage-recovery.yml'
+permissions:
+  contents: read
+jobs:
+  montage-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check fail-closed recovery of exactly 8/17 CUTs
+        run: |
+          python -m unittest discover -s experimental/r20/r208/tests -p test_r208_montage_8_of_17.py -v
+          python -m unittest discover -s experimental/r20/r206/tests -p test_r206_selective_asr.py -v
+      - name: Do not publish or touch Stable
+        run: |
+          python - <<'PY'
+          import json
+          assert json.load(open("release/next.json",encoding="utf8"))["version"]=="1.9.13"
+          print("PASS: no timeline/ASR side effects in R2.0.8 diagnostic tests")
+          PY

@@ -1,0 +1,57 @@
+name: R2.2.1 Windows Beta UTF-8 updater permanent hotfix gate
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r221/**'
+      - '.github/workflows/r221-encoding-test.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download exact original updater and last published Montage Beta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/r221 /tmp/r220 dist
+          gh release download v2.0.2 -p AIVE_UPDATE.zip --dir /tmp/r221
+          gh release download v2.2.0 -p AIVE_UPDATE.zip --dir /tmp/r220
+          python experimental/r20/r221/build_r221.py --previous /tmp/r220/AIVE_UPDATE.zip --baseline /tmp/r221/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+      - name: Test patched Python under simulated Windows cp1252
+        run: |
+          python -m unittest discover -s experimental/r20/r221/tests -p test_r221_encoding.py -v
+      - name: Test exact packaged CEP JavaScript syntax and safe ZIP scope
+        run: |
+          python - <<'PY'
+          import zipfile,json,hashlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              assert m['version']=='2.2.1' and m['format']==1
+              assert {x['path'] for x in m['files']}=={'updater/beta.py','cep/aive_updater_beta.js'}
+              for item in m['files']:
+                  assert len(item['before_sha256'])==64
+                  assert hashlib.sha256(z.read('payload/'+item['path'])).hexdigest()==item['sha256']
+                  if item['path']=='cep/aive_updater_beta.js':
+                      open('/tmp/aive-beta-update.js','wb').write(z.read('payload/'+item['path']))
+          print('PASS: only Beta updater files updated; no Montage or graphics code touched')
+          PY
+          node --check /tmp/aive-beta-update.js
+      - name: Protect current Stable release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          echo 'PASS: Stable v1.9.13 unaffected'

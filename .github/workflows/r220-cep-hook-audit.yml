@@ -1,0 +1,38 @@
+name: R2.2 live CEP Montage 01 hook audit
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/r220-cep-hook-audit.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download existing public CEP/JSX patch from v1.9.10
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p /tmp/source
+          gh release download v1.9.10 -p AIVE_UPDATE.zip --dir /tmp/source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Output hook names and short code blocks from public source only
+        run: |
+          python - <<'PY'
+          import zipfile,json
+          with zipfile.ZipFile('/tmp/source/AIVE_UPDATE.zip') as z:
+              manifest=json.loads(z.read('manifest.json'))
+              print('FILES',[(x['path'],x['sha256']) for x in manifest['files']])
+              for item in manifest['files']:
+                  if not item['path'].endswith('.js') and not item['path'].endswith('.jsx'):continue
+                  src=z.read('payload/'+item['path']).decode('utf8')
+                  lines=src.splitlines()
+                  print('FILE',item['path'],'LINES',len(lines))
+                  for i,l in enumerate(lines):
+                      print('%03d'%(i+1),l[:260])
+          PY

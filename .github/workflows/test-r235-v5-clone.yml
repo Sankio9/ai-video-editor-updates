@@ -1,0 +1,69 @@
+name: 'R235 V5 clone-only overwrite regression (no release)'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r235-v5-clone.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download exact published v2.3.4 SHA-pinned release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/previous dist
+          gh release download v2.3.4 -p AIVE_UPDATE.zip --dir /tmp/previous
+          mv /tmp/previous/AIVE_UPDATE.zip /tmp/previous/v234.zip
+          python experimental/r20/r235/build_r235.py --prior /tmp/previous/v234.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            pathlib.Path('dist/panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+            pathlib.Path('dist/helper.jsx').write_bytes(z.read('payload/cep/jsx/r235_v5_clone.jsx'))
+          PY
+      - name: Test clone-only V5 removal and updated NameTag review compatibility
+        run: |
+          set -eu
+          node experimental/r20/r235/tests/test_r235_clone.js
+          node --check dist/panel.js
+          node --check < dist/helper.jsx
+          node experimental/r20/r232/tests/test_r232_dialog.js dist/panel.js
+      - name: Verify immutable source SHA and all approved guards remain
+        run: |
+          set -eu
+          python - <<'PY'
+          import zipfile,hashlib,pathlib,json
+          sha=lambda x:hashlib.sha256(x).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/previous/v234.zip') as base:
+            m=json.loads(z.read('manifest.json'))
+            assert m['version']=='2.3.5' and m['format']==1
+            entries={x['path']:x for x in m['files']}
+            assert set(entries)=={'cep/r20_panel.js','cep/jsx/r235_v5_clone.jsx'}
+            for p,row in entries.items():assert sha(z.read('payload/'+p))==row['sha256']
+            assert entries['cep/r20_panel.js']['before_sha256']==sha(base.read('payload/cep/r20_panel.js'))
+            assert entries['cep/jsx/r235_v5_clone.jsx']['before_sha256'] is None
+            panel=z.read('payload/cep/r20_panel.js')
+            script=z.read('payload/cep/jsx/r235_v5_clone.jsx')
+            for bit in (b'ENGINE_VERSION_MISMATCH',b'noContentStatus',b'showNameTagReview',
+                        b'recoverOrFallback',b'onClickCapture',b'rollback',
+                        b'function evalR235',b'Suprascrie V5'):
+                assert bit in panel,bit
+            assert b'item.remove(false,false)' in script and b'source.clone()' in script
+            assert b'app.enableQE' not in script
+            assert b'r20_graphics.jsx' in panel
+            assert not any(x.startswith('tools/') for x in entries)
+          print('PASS only panel+new clone helper; approved R20 MOGRT writer and Stable untouched')
+          print('ZIP_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY

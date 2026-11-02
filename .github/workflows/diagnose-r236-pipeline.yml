@@ -1,0 +1,33 @@
+name: 'R236 dump released pipeline safety and synced mode contract'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/diagnose-r236-pipeline.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact approved R193 pipeline without patching
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/legacy
+          gh release download v1.9.13 -p AIVE_UPDATE.zip --dir /tmp/legacy
+          python - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('/tmp/legacy/AIVE_UPDATE.zip') as z:
+            for p,ranges in [
+               ('tools/r193_pipeline.py',[(90,265)]),
+               ('tools/r193_docx_reader.py',[(1,105)])]:
+              lines=z.read('payload/'+p).decode('utf-8').splitlines()
+              print('=====FILE',p)
+              for a,b in ranges:
+                for i in range(a-1,min(b,len(lines))):
+                  print('%s:%s:%s'%(p,i+1,lines[i]))
+          PY

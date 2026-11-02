@@ -1,0 +1,42 @@
+name: 'Diagnostic R236 actual synced modules and montage sources NO RELEASE'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/diagnose-r236-source.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read published Stable and 2.3.5 module source contracts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p /tmp/r236/stable /tmp/r236/beta
+          gh release download v1.9.13 -p AIVE_UPDATE.zip --dir /tmp/r236/stable || true
+          gh release download v2.3.5 -p AIVE_UPDATE.zip --dir /tmp/r236/beta
+          python - <<'PY'
+          import zipfile,json,re,pathlib
+          for version in ('stable','beta'):
+            zpath=pathlib.Path('/tmp/r236')/version/'AIVE_UPDATE.zip'
+            if not zpath.exists():
+              print('ARCHIVE_MISSING',version);continue
+            with zipfile.ZipFile(zpath) as z:
+              print('ARCHIVE',version,'members',z.namelist()[:150])
+              manifest=json.loads(z.read('manifest.json'))
+              print('MANIFEST',version,json.dumps(manifest)[:2500])
+              for name in z.namelist():
+                if not name.endswith(('.js','.py','.jsx')):continue
+                if not any(x in name.lower() for x in ('r193','r154','r143','r151','r17','r19','montage','pipeline','r20_panel')):
+                  continue
+                content=z.read(name).decode('utf8','replace')
+                matches=[(i+1,line[:250]) for i,line in enumerate(content.splitlines())
+                         if any(x in line for x in ('SUBTITLE_DURATION_UNREADABLE','REVIEW_WEAK','LAST_MATCH',
+                         'NameTag REVIEW','r154','STRIKETHROUGH','strikethrough','--task','--omit-struck',
+                         'r171','r143','CAPS','caps','VO 04','task==','task =='))]
+                print('FILE',name,'total_lines',len(content.splitlines()),'matches',matches[:120])
+          PY

@@ -1,0 +1,75 @@
+name: R2.2.2 compatibility and cumulative patch verification
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths:
+      - 'experimental/r20/r222/**'
+      - '.github/workflows/r222-compat-ci.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download exact previous published cumulative components and user-workflow provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/r220 /tmp/r221 /tmp/r1910 dist
+          gh release download v2.2.0 -p AIVE_UPDATE.zip --dir /tmp/r220
+          gh release download v2.2.1 -p AIVE_UPDATE.zip --dir /tmp/r221
+          gh release download v1.9.10 -p AIVE_UPDATE.zip --dir /tmp/r1910
+          python - <<'PY'
+          import json,zipfile
+          with zipfile.ZipFile('/tmp/r1910/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              x=[r for r in m['files'] if r['path']=='cep/r193_workflow.js']
+              assert len(x)==1
+              assert x[0]['before_sha256']=='b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222'
+              print('PASS: User-supplied file SHA is the exact original publicly verified v1.9.10 before state')
+          PY
+          python experimental/r20/r222/build_r222.py --r220 /tmp/r220/AIVE_UPDATE.zip --r221 /tmp/r221/AIVE_UPDATE.zip --output dist/AIVE_UPDATE.zip
+      - name: Verify 9-file SHA allowlist, source-safe update, UTF-8 and original behavior
+        run: |
+          python - <<'PY'
+          import zipfile,json,hashlib
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              rows={x['path']:x for x in m['files']}
+              assert m['format']==1 and m['version']=='2.2.2'
+              assert len(rows)==9
+              assert rows['cep/r193_workflow.js']['before_sha256']=='b191306499a2fbb0077dd48e7e2d6b07c8f87075c9e03437e86a4cce0f611222'
+              assert rows['cep/r193_workflow.js']['sha256']=='976dd244a1537d9b8999867a88fd5a4ee1fd870d35e469d0007f57b6e7756ae5'
+              for p,row in rows.items():
+                  assert hashlib.sha256(z.read('payload/'+p)).hexdigest()==row['sha256']
+                  if p.endswith('.js'):
+                      with open('/tmp/'+p.replace('/','_'),'wb') as f:f.write(z.read('payload/'+p))
+              assert 'moduleSubs' in z.read('payload/cep/r193_workflow.js').decode('utf8')
+              assert 'moduleName' in z.read('payload/cep/r193_workflow.js').decode('utf8')
+              assert 'moduleCaps' in z.read('payload/cep/r193_workflow.js').decode('utf8')
+              assert 'window.AIVE_R220_UI.start()' in z.read('payload/cep/r193_workflow.js').decode('utf8')
+              assert b'ensure_ascii=True' in z.read('payload/updater/beta.py')
+          print('PASS: nine unchanged public payloads, only before SHA adjusted to actual user baseline')
+          PY
+          node --check /tmp/cep_r193_workflow.js
+          node --check /tmp/cep_aive_updater_beta.js
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_montage_plan.py -v
+          python -m unittest discover -s experimental/r20/r220/tests -p test_r220_capture.py -v
+          node experimental/r20/r220/tests/test_r220_writer.js
+      - name: Protect current Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = 'v1.9.13'
+          echo 'PASS: v1.9.13 remains Stable, no published patch altered'

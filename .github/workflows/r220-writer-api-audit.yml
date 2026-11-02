@@ -1,0 +1,49 @@
+name: R2.2 public release editor/CEP interface inspection
+on:
+  push:
+    branches: ['feature/r20-independent-graphics-gate']
+    paths: ['.github/workflows/r220-writer-api-audit.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch public Stable source archive only
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p /tmp/aive
+          gh release download v1.9.13 -p AIVE_UPDATE.zip --dir /tmp/aive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Inspect public Montage API and UI file listing
+        run: |
+          python - <<'PY'
+          import json,zipfile,re
+          with zipfile.ZipFile('/tmp/aive/AIVE_UPDATE.zip') as z:
+              m=json.loads(z.read('manifest.json'))
+              print('PUBLIC_FILES',[(r['path'],r['before_sha256']) for r in m['files']])
+              for row in m['files']:
+                  name=row['path']
+                  if not any(x in name.lower() for x in ('cep','jsx','panel','r143','r193','r19')):
+                      continue
+                  blob=z.read('payload/'+name)
+                  try:src=blob.decode('utf8')
+                  except UnicodeError:continue
+                  lines=src.splitlines()
+                  print('PUBLIC_FILE',name,'LINES',len(lines))
+                  needles=('r193','cutR193','cutBuild','cutCheck','Montează după scenariu',
+                           'moduleCut','r143','evalScript','function build','function montage',
+                           'overwriteClip','insertClip','createMarker','marker','videoTracks',
+                           'audioTracks','sourceCode','mediaPath','projectItem')
+                  hits=[i for i,l in enumerate(lines) if any(x in l for x in needles)]
+                  for i in hits[:35]:
+                      print('SNIP',name,i+1)
+                      for n in range(max(0,i-1),min(len(lines),i+4)):
+                          print('%04d'%(n+1),lines[n][:240])
+          PY

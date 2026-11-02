@@ -1,0 +1,81 @@
+name: 'R2.3.1 exact CEP engine contract and independent graphics tests (NO RELEASE)'
+on:
+  push:
+    branches: [feature/r20-independent-graphics-gate]
+    paths: ['.github/workflows/test-r231-handshake.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare actual release 2.2.9 CEP and 2.3.0 parser source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/prior /tmp/aive_runtime/tools dist
+          gh release download v2.2.9 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v229.zip
+          gh release download v2.3.0 -p AIVE_UPDATE.zip --dir /tmp/prior
+          mv /tmp/prior/AIVE_UPDATE.zip /tmp/prior/v230.zip
+          echo 'R231 exact predecessor 2.2.9 panel source is now pinned'
+          python experimental/r20/r231/build_r231.py \
+            --v229 /tmp/prior/v229.zip --v230 /tmp/prior/v230.zip \
+            --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import zipfile,pathlib
+          with zipfile.ZipFile('/tmp/prior/v230.zip') as z:
+            data=z.read('payload/tools/r20_graphics_plans.py')
+          (pathlib.Path('/tmp/aive_runtime/tools')/'r20_graphics_plans.py').write_bytes(data)
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            data=z.read('payload/tools/r230_universal.py')
+          (pathlib.Path('/tmp/aive_runtime/tools')/'r230_universal.py').write_bytes(data)
+          PY
+      - name: Reproduce real R2.3.0 ENGINE_VERSION_MISMATCH fix across all 3 modules
+        run: |
+          set -eu
+          python experimental/r20/r231/tests/test_r231_contract.py
+      - name: Assert actual 2-file update, original MOGRT JSX unaffected and static engine guard
+        run: |
+          set -eu
+          python - <<'PY'
+          import hashlib,json,zipfile,pathlib
+          sha=lambda x:hashlib.sha256(x).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/prior/v229.zip') as old:
+            m=json.loads(z.read('manifest.json'))
+            files={r['path']:r for r in m['files']}
+            assert m['format']==1 and m['version']=='2.3.1'
+            assert set(files)=={'cep/r20_panel.js','tools/r230_universal.py'}
+            assert files['cep/r20_panel.js']['before_sha256']==sha(old.read('payload/cep/r20_panel.js'))
+            with zipfile.ZipFile('/tmp/prior/v230.zip') as r230:
+              assert files['tools/r230_universal.py']['before_sha256']==sha(
+                    r230.read('payload/tools/r230_universal.py'))
+            panel=z.read('payload/cep/r20_panel.js')
+            assert b'R2.3.1 BETA' in panel and b'R2.2.9 BETA' not in panel
+            assert b'R2.3-UNIVERSAL-DOCX-9-FORMATS' in panel
+            assert b'R2.1.1-auto-preflight-readable' in panel
+            assert b'a939e588fa4c458c05ceaae2044539564a21ba4c0975c9294089b518ed84d770' in panel
+            assert b'ENGINE_VERSION_MISMATCH' in panel and b'onClickCapture' in panel
+            assert b'r207OmitStruck' in panel and b'recoverOrFallback' in panel
+            for p,r in files.items():
+                assert sha(z.read('payload/'+p))==r['sha256']
+            assert not any(p.startswith('cep/jsx/') or p.startswith('updater/') for p in files)
+          print('PASS original fallback, SHA-locked universal, independent V3/V4/V5, R220 unchanged')
+          print('FINAL_ASSET_SHA256',sha(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+          node - <<'JS'
+          const fs=require('fs');
+          const p=fs.readFileSync('experimental/r20/r231/build_r231.py','utf8');
+          if(!p.includes('OLD_GATE')||!p.includes('NEW_GATE'))process.exit(1);
+          JS
