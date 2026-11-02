@@ -118,6 +118,7 @@ with tempfile.TemporaryDirectory() as t:
     d.add_paragraph('participant la lichidarea consecințelor avariei')
     d.add_paragraph('45.09 M-am înscris în anul 2003 și am mai așteptat. 45.31')
     p=t/'historical_source.docx';d.save(p)
+    print('R245 CERNOBIL DEBUG',[(x['paragraph_start'],x['text'][:80]) for x in parse(p)['segments']])
     a=build(p,'03')
     assert len(a['items'])==1 and a['items'][0]['name']=='ION RUSU'
     assert not any(x['text']=='ION RUSU' for x in build(p,'02')['items'])
