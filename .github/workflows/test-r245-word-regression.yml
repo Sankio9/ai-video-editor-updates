@@ -1,4 +1,4 @@
-name: R245 Word layouts: V3 no metadata and V4 explicit identities (NO RELEASE)
+name: "R245 Word layouts: V3 no metadata and V4 explicit identities (NO RELEASE)"
 on:
   push:
     branches: [feature/r20-independent-graphics-gate]
