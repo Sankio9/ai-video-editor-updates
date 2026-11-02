@@ -1,0 +1,9 @@
+{
+  "version": "2.3.7",
+  "source_commit": "7cc0561911003c9ede9da90ab6dea88d88d2cd13",
+  "scope": [
+    "cep/r20_panel.js",
+    "tools/r230_universal.py",
+    "tools/r236_name_guard.py"
+  ]
+}
