@@ -94,3 +94,18 @@
 ## Următoarea acțiune autorizată
 
 Această rundă livrează **numai cele două documente** în `feature/stable-autonomous-crossplatform-spec`. Nu pornește implementarea, nu publică release, nu schimbă workflow-uri, Beta, Stable R1.9.13 și nici directoare Premiere. **Primul pas efectiv după aprobarea planului** este inventarul tehnic Etapa 0 și o matrice compatibilitate MOGRT Windows/macOS, fără schimbări în produsele instalate.
+
+
+## Amendament 2026-11-02: instituție IT-managed, fără instalare liberă de aplicații
+**Prioritate nouă înainte de Etapa 0:** audit de distribuție pe două stații administrate, cu acceptul IT. Mac are Premiere 2026, Windows are atât Premiere 2025 cât și 2026. După instalarea prin Extensions/Creative Cloud, pluginurile existente rulează. Nu confunda asta cu dreptul de a instala orice CCX/ZXP nou.
+
+**Etapa 0A — Poarta IT (fără executabile ori modificări de sisteme):**
+1. Identifică versiunile complete `25.x`, `26.x` și Adobe ID/planul administrat — mai ales dacă echipa folosește Adobe Admin Console Enterprise/Teams sau Creative Cloud individual gestionat de IT.
+2. Confirmă cu IT metoda acceptată: plugin Marketplace self-service, CCX intern prin Creative Cloud Desktop, ori distribuție privată prin Adobe Admin Console Managed Package/UPIA; solicită aprobare pentru URL-ul de updates doar la click.
+3. Definim permisiuni minime `localFileSystem: request` plus sandbox, fără fullAccess/native helper/Developer Mode la utilizatori. Prezentăm IT un pachet de analiză cu lista permisiunilor, surse cod, hash, licențe și politica de date offline.
+4. Pilot pe un Mac Premiere 26 și un Windows Premiere 25.6+/26 cu `UXP .ccx` **NUMAI după probe reale MOGRT**. Pentru 25.0–25.5: `CEP .zxp` autorizat, dacă instanța o cere; niciun instrument de dezvoltare pe stațiile monitorizate.
+5. Dacă IT interzice actualizările direct, butonul Actualizări numai verifică/distribuie informații; instalarea/rollback se face exclusiv prin Creative Cloud/IT. Nu încerca scriere în directoarele pluginurilor sau UPIA fără aprobare.
+
+**GATE IT:** administratorul confirmă canalul acceptat și permisiunile; pachetul nu necesită instalarea altui software; după instalare 00/02/03/04 rulează offline. Dacă Adobe Premiere 26 UXP nu poate modifica toate câmpurile MOGRT, testul devine `BLOCKED` și se păstrează arhitectura duală până la disponibilitatea oficială API. Fără publicare Marketplace publică implicit.
+
+**Notă de risc:** un CCX obișnuit este instalabil prin Creative Cloud Desktop, dar anumite permisiuni și politici organizaționale pot solicita admin. Un plugin UXP Hybrid cu native code ar solicita admin și este **exclus**. Dezvoltarea folosind UXP Developer Tool are nevoie de admin pe calculatorul de dezvoltare, NU pe stațiile utilizatorilor.
