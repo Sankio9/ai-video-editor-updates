@@ -1,0 +1,86 @@
+name: "AIVE CEP SIGNED TEST 0.1.1 -> 0.1.2 (Windows, isolated)"
+on:
+  push:
+    branches: ["aive/stable-signed-probe"]
+    paths:
+      - ".github/workflows/cep-signed-probe.yml"
+      - "diagnostics/signed-probe-v0.1.1/**"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: aive-cep-signed-probe
+  cancel-in-progress: false
+jobs:
+  build_and_verify:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build two versions using ONE isolated self-signed test certificate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "diagnostics/signed-probe-v0.1.1/AIVE-Stable-Signed-Test"
+          if (!(Test-Path "$root/CSXS/manifest.xml")) { throw "Missing manifest" }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $signer = Join-Path $env:RUNNER_TEMP "ZXPSignCmd.exe"
+          $src = "https://raw.githubusercontent.com/Adobe-CEP/CEP-Resources/master/ZXPSignCMD/4.1.3/x64/ZXPSignCmd.exe"
+          Invoke-WebRequest -Uri $src -OutFile $signer -UseBasicParsing
+          if ((Get-Item $signer).Length -lt 4500000) { throw "Unexpected Adobe signer size" }
+          $pw = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+          $cert = Join-Path $env:RUNNER_TEMP "aive_ephemeral_test.p12"
+          & $signer -selfSignedCert MD Chisinau AIVE "AIVE-CEP-TEST-ONLY" $pw $cert -validityDays 730
+          if ($LASTEXITCODE -ne 0 -or !(Test-Path $cert)) { throw "Certificate creation failed" }
+          Copy-Item $root -Destination "$env:RUNNER_TEMP\AIVE-v0.1.2" -Recurse
+          $new = "$env:RUNNER_TEMP\AIVE-v0.1.2"
+          (Get-Content "$new/CSXS/manifest.xml" -Raw -Encoding UTF8).Replace("0.1.1", "0.1.2") | Set-Content "$new/CSXS/manifest.xml" -Encoding UTF8
+          (Get-Content "$new/index.html" -Raw -Encoding UTF8).Replace("0.1.1", "0.1.2") | Set-Content "$new/index.html" -Encoding UTF8
+          $manifestA = [xml](Get-Content "$root/CSXS/manifest.xml" -Raw)
+          $manifestB = [xml](Get-Content "$new/CSXS/manifest.xml" -Raw)
+          if ($manifestA.ExtensionManifest.ExtensionBundleVersion -ne "0.1.1") { throw "Wrong base manifest" }
+          if ($manifestB.ExtensionManifest.ExtensionBundleVersion -ne "0.1.2") { throw "Wrong new manifest" }
+          if ($manifestA.ExtensionManifest.ExtensionBundleId -ne $manifestB.ExtensionManifest.ExtensionBundleId) { throw "Upgrade ID changed" }
+          if ((Get-ChildItem $root -Recurse -File).Count -ne 3) { throw "Unexpected extra source files" }
+          if ((Get-ChildItem $new -Recurse -File).Count -ne 3) { throw "Unexpected extra upgraded files" }
+          $files=@("AIVE_CEP_SIGNED_TEST_0.1.1.zxp","AIVE_CEP_SIGNED_TEST_0.1.2.zxp")
+          & $signer -sign $root "dist/$($files[0])" $cert $pw
+          if ($LASTEXITCODE -ne 0) { throw "v0.1.1 sign failed" }
+          & $signer -sign $new "dist/$($files[1])" $cert $pw
+          if ($LASTEXITCODE -ne 0) { throw "v0.1.2 sign failed" }
+          foreach($f in $files) {
+            $file="dist/$f"
+            if (!(Test-Path $file)) { throw "Missing signed package" }
+            & $signer -verify $file
+            if ($LASTEXITCODE -ne 0) { throw "Adobe signature verify FAILED: $f" }
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $z=[IO.Compression.ZipFile]::OpenRead((Resolve-Path $file))
+            try {
+              $names=@($z.Entries | ForEach-Object FullName)
+              if (@($names | Where-Object { $_ -match '^META-INF/' }).Count -eq 0) { throw "Missing signature metadata: $f" }
+              if (@($names | Where-Object { $_ -match 'CSXS/manifest.xml$' }).Count -ne 1) { throw "Missing/duplicate manifest: $f" }
+            } finally { $z.Dispose() }
+            $digest=(Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
+            "$f  $digest" | Add-Content dist/SHA256SUMS.txt
+            Write-Host "PASS SIGNATURE $f / SHA256 $digest"
+          }
+          Remove-Item $cert -Force
+          Write-Host "PASS two Adobe-signed ZXP packages, same ID, same test certificate, no cert shipped"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aive-cep-signed-probe-two-versions
+          path: dist/*
+          if-no-files-found: error
+      - name: Publish isolated prerelease, NEVER Stable
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = "aive-cep-signed-test-0.1.2"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) { throw "Test release already exists. Refuse overwrite." }
+          gh release create $tag "dist/AIVE_CEP_SIGNED_TEST_0.1.1.zxp" "dist/AIVE_CEP_SIGNED_TEST_0.1.2.zxp" "dist/SHA256SUMS.txt" --prerelease --title "AIVE CEP SIGNED TEST only - not Stable" --notes "TEST-ONLY Adobe ZXPSignCmd signed packages; 0.1.1 to 0.1.2, same extension ID, same ephemeral test cert. Signature checked in Windows CI. Not installed in Premiere; no live approval; do not use on office systems or production. The signing private key is discarded after build. Stable v1.9.13 and Beta are untouched."
+          if ($LASTEXITCODE -ne 0) { throw "Failed to publish isolated prerelease" }
+          $latest=gh api "repos/$env:GITHUB_REPOSITORY/releases/latest" --jq .tag_name
+          if ($latest -ne "v1.9.13") { throw "Stable latest tag unexpectedly changed to $latest" }
