@@ -124,3 +124,25 @@ Referințe Adobe (verificate 2026-11-02):
 - Premiere UXP install / CCX / Admin Console: https://developer.adobe.com/premiere-pro/uxp/plugins/distribution/install/
 - Permissions for local DOCX picker: https://developer.adobe.com/premiere-pro/uxp/resources/recipes/filesystem-operations/
 - Package UXP CCX (native addon avoided): https://developer.adobe.com/premiere-pro/uxp/plugins/distribution/package/
+
+
+## 11. Cerință fermă — instalare de către administrator IT, prin Creative Cloud (2026-11-02)
+
+**Confirmare utilizator:** pe calculatoarele organizației **doar administratorul IT poate efectua instalarea**; extensia AI Video Editor Stable **trebuie instalată și gestionată prin Adobe Creative Cloud**, nu printr-un installer de aplicație separat.
+
+### Două sensuri distincte ale instalării „din Creative Cloud”
+1. **Instalare privată prin Creative Cloud Desktop (primar, obligatoriu):** livrăm un **UXP `.ccx` fără cod nativ**. Administratorul IT deschide fișierul aprobat; Creative Cloud Desktop se lansează și gestionează instalarea; pluginul este apoi vizibil în Creative Cloud Desktop → **Manage Plugins** și Premiere → **Window → UXP Plugins**. Instalarea poate solicita permisiuni IT, în conformitate cu politica organizației; nu este necesară listarea publică. Alternativ, IT folosește Adobe Admin Console (managed package cu extensiile incluse) / UPIA, ambele mecanisme Adobe oficiale. Această variantă **nu generează automat un rezultat căutabil în Stock & Marketplace**.
+2. **Instalare direct din catalogul Creative Cloud → Stock & Marketplace → Plugins → Get (opțional, NU confundăm cu varianta 1):** necesită trimiterea pluginului în Adobe Developer Distribution, evaluare/aprobare și publicare în Marketplace; pluginul devine descoperibil, nefiind o soluție exclusiv privată. Se folosește doar dacă ulterior se aprobă o distribuție publică sau o opțiune enterprise documentată care păstrează accesul privat.
+
+**Decizie contractuală:** prioritatea Stable este metoda 1, **pachet privat UXP CCX instalabil din aplicația Creative Cloud de către IT**, fără executabile auxiliare. Pentru Windows cu Premiere **25.0–25.5**, UXP nu este disponibil; un **CEP ZXP** poate fi necesar, instalat de IT prin mecanism Adobe autorizat, dar nu trebuie prezentat drept identic cu instalarea UXP CCX prin Creative Cloud Desktop. Premiere 25.6 / 26 Windows și Premiere 26 Mac urmăresc pachetul UXP CCX după GATE tehnic pe MOGRT.
+
+**Gate critic:** nu putem declara cerința realizată până când, pe Windows 25.6/26 și Mac 26, un administrator poate instala un CCX de test prin Creative Cloud Desktop și pluginul poate citi DOCX offline, apoi edita și verifica textul real V3/V4/V5 în Premiere, fără Python, helper, Developer Mode sau aplicație externă. Dacă API UXP nu expune câmpurile MOGRT necesare, acest gate rămâne BLOCKED; nu pretindem că doar ambalarea într-un CCX rezolvă funcția editorială.
+
+**Actualizări:** în versiunea privată `.ccx` instalată de IT, secțiunea Actualizări afișează versiunea/notele și disponibilitatea când verificarea online este permisă, dar livrarea și instalarea update-urilor/rollback urmează Creative Cloud Desktop sau gestionarea IT, nu modificarea directă a pluginului. Update-urile Marketplace automate sunt specifice canalului Marketplace și politicii IT, nu sunt garantate pentru CCX instalat independent.
+
+**Referințe Adobe 2026-11-02:**
+- https://developer.adobe.com/premiere-pro/uxp/plugins/distribution/install/
+- https://developer.adobe.com/premiere-pro/uxp/plugins/distribution/enterprise-distribution/
+- https://developer.adobe.com/premiere-pro/uxp/plugins/distribution/overview/
+- https://developer.adobe.com/premiere-pro/uxp/plugins/distribution/package/
+- https://helpx.adobe.com/business/enterprise/deploy-apps-updates/customize-end-user-experience/including-plugins-package.html
