@@ -1,0 +1,111 @@
+name: 'Publish R2.3.7 Beta - Word V3 V4 structural fixes'
+on:
+  push:
+    branches: [main]
+    paths: ['release/r237-word-structural-request.json']
+permissions:
+  contents: write
+concurrency:
+  group: aive-r237-word-verified
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify request and protected Stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python - <<'PY'
+          import json
+          assert json.load(open('release/r237-word-structural-request.json'))=={
+            'version':'2.3.7','source_commit':'7cc0561911003c9ede9da90ab6dea88d88d2cd13',
+            'scope':['cep/r20_panel.js','tools/r230_universal.py','tools/r236_name_guard.py']
+          }
+          PY
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          ! gh release view v2.3.7 >/dev/null 2>&1
+      - uses: actions/checkout@v4
+        with:
+          ref: 7cc0561911003c9ede9da90ab6dea88d88d2cd13
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Build SHA-locked R237 using exact latest published R236
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          python -m pip -q install python-docx
+          mkdir -p /tmp/base /tmp/r245_runtime/tools dist
+          gh release download v2.3.6 -p AIVE_UPDATE.zip --dir /tmp/base
+          python experimental/r20/r245/build_r245.py --base /tmp/base/AIVE_UPDATE.zip --out dist/AIVE_UPDATE.zip
+          python - <<'PY'
+          import pathlib,zipfile
+          with zipfile.ZipFile('/tmp/base/AIVE_UPDATE.zip') as z:
+            for p in ('tools/r20_graphics_plans.py','tools/r237_coverage.py'):
+              (pathlib.Path('/tmp/r245_runtime/tools')/pathlib.Path(p).name).write_bytes(z.read('payload/'+p))
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z:
+            for p in ('tools/r230_universal.py','tools/r236_name_guard.py'):
+              (pathlib.Path('/tmp/r245_runtime/tools')/pathlib.Path(p).name).write_bytes(z.read('payload/'+p))
+            pathlib.Path('dist/panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
+          PY
+      - name: Regression six newsroom formats, italic and metadata, and Balatina
+        run: |
+          set -eu
+          python experimental/r20/r245/tests/test_r245_scripts.py
+          mkdir -p /tmp/r236_runtime/tools
+          cp /tmp/r245_runtime/tools/*.py /tmp/r236_runtime/tools/
+          python experimental/r20/r236/tests/test_r236_balatinaname.py
+          python experimental/r20/r237/tests/test_r237_balatinashape.py
+          node --check dist/panel.js
+      - name: Verify exactly three SHA-pinned files and unaffected tracks
+        run: |
+          set -eu
+          python - <<'PY'
+          import hashlib,json,zipfile,pathlib
+          h=lambda x:hashlib.sha256(x).hexdigest()
+          with zipfile.ZipFile('dist/AIVE_UPDATE.zip') as z,zipfile.ZipFile('/tmp/base/AIVE_UPDATE.zip') as base:
+            meta=json.loads(z.read('manifest.json'))
+            assert meta['version']=='2.3.7' and meta['format']==1
+            assert {x['path'] for x in meta['files']}=={
+               'cep/r20_panel.js','tools/r230_universal.py','tools/r236_name_guard.py'}
+            for x in meta['files']:
+              p=x['path'];assert x['before_sha256']==h(base.read('payload/'+p))
+              assert x['sha256']==h(z.read('payload/'+p))
+            assert all(not x['path'].startswith(('updater/','cep/jsx/')) for x in meta['files'])
+          print('PASS 3 file patch; original Premiere MOGRT writer, Montage and Stable preserved')
+          print('ZIP_SHA256',h(pathlib.Path('dist/AIVE_UPDATE.zip').read_bytes()))
+          PY
+      - name: Publish verified Beta and recheck uploaded asset SHA, Stable unchanged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          cat > /tmp/r237-notes.md <<'EOF'
+          R2.3.7 BETA — DOCX newsroom parser improvements in Independent Subtitles 02 and NameTag 03.
+          Fixed explicit one-word name + role metadata leaking into V3 (VASILE / beneficiar, MARIA / beneficiară); role extraction supports independent source/name/title paragraphs and SINCRON: NAME, role (or SINCRON NAME, role) with source/timecode/speech on separate lines INSIDE one Word paragraph. Same interview speaker remains Regular after reporter's Italic question or a VO narrative block; the reporter question is separate Italic; Strikethrough checkbox removes only the crossed fragments. A new source reopens script editorial parsing even if there is no AMB/SINCRON label (archival code 7896). Multiple source/role anchors verified against original DOCX with strict name/role/count checks, no invented names. Synthetic regression across Casa Angelus, Muncitori străini, Satul Nou GEO, Cernobîl, Veterinar and Balatina passed before publishing; exact 3-file SHA guards.
+          Only cep/r20_panel.js (SHA pin), tools/r230_universal.py (parser), tools/r236_name_guard.py (verified speaker identity) changed. Montage 01, V5 MOGRT writer, Beta updater and protected Stable v1.9.13 unchanged. Live Adobe Premiere Pro 2025 V3/V4 insertion remains unverified until tested on a spare sequence; CI is not LIVE validation. Separate requirements Montage Strikethrough and synced V5 after montage are not included.
+          EOF
+          gh release create v2.3.7 dist/AIVE_UPDATE.zip \
+            --target 7cc0561911003c9ede9da90ab6dea88d88d2cd13 \
+            --title 'AI Video Editor R2.3.7 — Word subtitle and NameTag fixes BETA' \
+            --notes-file /tmp/r237-notes.md --prerelease --latest=false
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = "v1.9.13"
+          python - <<'PY'
+          import hashlib,json,subprocess
+          data=json.loads(subprocess.check_output(['gh','api','repos/Sankio9/ai-video-editor-updates/releases/tags/v2.3.7']))
+          digest=hashlib.sha256(open('dist/AIVE_UPDATE.zip','rb').read()).hexdigest()
+          assert data['prerelease'] and not data['draft'] and len(data['assets'])==1
+          assert data['assets'][0]['digest']=='sha256:'+digest
+          print('PASS published archive SHA256',digest)
+          PY
