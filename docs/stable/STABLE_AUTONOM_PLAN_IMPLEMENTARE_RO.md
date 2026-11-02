@@ -109,3 +109,14 @@ Această rundă livrează **numai cele două documente** în `feature/stable-aut
 **GATE IT:** administratorul confirmă canalul acceptat și permisiunile; pachetul nu necesită instalarea altui software; după instalare 00/02/03/04 rulează offline. Dacă Adobe Premiere 26 UXP nu poate modifica toate câmpurile MOGRT, testul devine `BLOCKED` și se păstrează arhitectura duală până la disponibilitatea oficială API. Fără publicare Marketplace publică implicit.
 
 **Notă de risc:** un CCX obișnuit este instalabil prin Creative Cloud Desktop, dar anumite permisiuni și politici organizaționale pot solicita admin. Un plugin UXP Hybrid cu native code ar solicita admin și este **exclus**. Dezvoltarea folosind UXP Developer Tool are nevoie de admin pe calculatorul de dezvoltare, NU pe stațiile utilizatorilor.
+
+
+## Decizie finală de distribuție — 2026-11-02 (instalare IT în Creative Cloud)
+
+- **Instalator final cerut:** UXP **CCX privat**, instalat de **administratorul IT prin Adobe Creative Cloud Desktop** (prin deschiderea `.ccx` aprobat; apare în `Manage Plugins`) sau distribuit de IT ca Adobe Admin Console managed package. Nu este cerută listarea publică în Adobe Marketplace, iar un CCX privat **nu apare automat ca rezultat căutabil** în Stock & Marketplace.
+- **Nu folosim** `.exe`, `.dmg`, `.pkg`, agent/daemon local, Python, utilitar custom, schimbarea manuală a permisiunilor sau developer mode pe stațiile biroului. **IT rămâne singurul instalator**.
+- **Condiție înainte de generarea artefactelor Stable:** test controlat de instalare CCX pe Mac Premiere 26 și Windows Premiere 25.6+/26, plus verificarea completă a scrierii/readback textului MOGRT V3/V4/V5 pe UXP. **Pachet instalabil ≠ plugin funcțional**.
+- **Dacă Windows folosește Premiere 25.0–25.5**, va fi necesară o ediție CEP/ZXP compatibilă, instalată prin flux IT aprobat; această excepție nu este echivalentă cu experiența CCX UXP. Versiunea exactă 25.x trebuie verificată.
+- **Test updater corporativ:** click `Verifică actualizările` raportează versiune/note; pachetul nou este semnat/verificat și **IT îl instalează prin Adobe**. Nu promitem update silențios/autonom care ar ocoli IT; pentru Marketplace public actualizarea poate urma Creative Cloud, sub controlul politicii IT.
+- **Criteriu de acceptare suplimentar:** după instalare autoritizată de IT, pluginul funcționează fără internet în 00/02/03/04; nicio dependență instalată separat. Testează pe Mac și pe ambele versiuni Premiere disponibile pe Windows.
+- **Separare canale:** dacă într-o etapă ulterioară lansăm și versiune Marketplace, aceasta folosește un plugin ID separat de ediția privată, conform cerințelor de entitlement Adobe.
