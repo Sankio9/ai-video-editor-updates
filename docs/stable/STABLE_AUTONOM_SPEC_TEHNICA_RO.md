@@ -104,3 +104,23 @@ Referințe Adobe (verificate 2026-11-02):
 ## 9. Interdicții / limite de mandat
 
 **În această etapă sunt autorizate DOAR documentația și planificarea într-un branch separat.** NU modifica, publica, reinstala sau redistribui Beta, Stable R1.9.13, updaterul curent, branchul `feature/r20-independent-graphics-gate`, fișierele instalate pe PC ori proiectele Premiere. Orice build sau promovare Stable va cere testele și aprobarea editorială corespunzătoare.
+
+
+## 10. Constrângere NOUĂ aprobată contextual — stații de lucru administrate de IT (2026-11-02)
+**Context suplimentar furnizat de utilizator:** Mac de birou rulează Premiere 2026 (26.x), Windows de birou rulează Premiere 2025 și 2026; ambele sunt monitorizate, iar instalarea aplicațiilor necesită aprobarea conducerii/IT. Pluginurile instalate prin mecanismul oficial Adobe (Extensions / Creative Cloud) rulează după instalare. **Nu încerca instalări neautorizate, Developer Mode pe stațiile angajaților, side-loading direct în foldere Adobe, schimbări de permisiuni, bypass EDR/MDM, procese helper ascunse.**
+
+### Decizie de distribuție conformă
+- Construiește un **plugin Premiere aprobat**, fără niciun executabil extern, native addon `.uxpaddon`, installer `.exe/.dmg/.pkg`, Python, shell, daemon, localhost, cerință Terminal sau Developer Mode la utilizatori. **Dezvoltarea și pachetarea se fac pe mașini de dezvoltare neadministrate / mediul CI**; instalarea în birou se face prin instrumentele Adobe autorizate și politica IT.
+- **Mac Premiere 2026:** `UXP .ccx` este direcția preferată; Windows Premiere 25.6+ sau 26: UXP `.ccx` după probarea MOGRT edit/readback; Windows Premiere 25.0–25.5: `CEP .zxp` semnat, numai pe hosturi compatibile și prin instalare autorizată. Adapterul UXP nu poate fi declarat gata doar pentru că Premiere 26 îl acceptă: V3 Regular/Italic, V4 nume+funcție și V5 Orange/Bold+readback necesită probă REALĂ.
+- **Canal privat recomandat:** Admin Console Managed Package Adobe cu `.ccx` intern și Unified Plugin Installer Agent (UPIA), distribuit de echipa IT; **Creative Cloud Marketplace** doar dacă organizația permite și acceptă publicarea în Marketplace (un listing obișnuit devine descoperibil public, nu echivalează cu un depozit privat). `.ccx` distribuit direct poate deschide Creative Cloud Desktop dar **poate cere administrator**; nu promite instalare self-service fără aprobarea IT.
+- **Permisiuni minime:** UXP `localFileSystem: "request"` pentru DOCX ales de utilizator și `plugin-data:/` pentru stare, fără `fullAccess`. Rețea dezactivată în modulele editoriale; `Actualizări` poate verifica release-ul doar la solicitare, dacă politica IT permite endpointul. Nu colectează și nu trimite fișiere editoriale.
+- **Updater pe echipamente administrate:** Secțiunea Actualizări poate afișa starea și informațiile de versiune (și poate verifica release-ul doar cu acordul utilizatorului), dar nu modifică direct folderele de plugin și nu rulează instalatori neautorizați. Instalează/update/rollback **prin Creative Cloud sau deployment IT**, conform politicii organizației. Dacă utilizatorul are Marketplace self-service aprobat, actualizările pot urma mecanismul Adobe; în caz contrar, afișează «Actualizare disponibilă — solicitați aprobarea IT».
+- **Adobe Admin Console** permite administrarea permisiunilor și implementarea pachetelor de pluginuri în stațiile administrate. Primul pilot se face pe **Mac 26** și **Windows 25.6/26** UXP, apoi Windows 25.0–25.5 CEP dacă există în practică; versiunea exactă 25.x trebuie verificată, nu dedusă din eticheta «2025».
+- **Compatibilitate 2025+ = obiectiv condiționat de gate API și politicile Adobe.** În special lipsa suportului pentru textul MOGRT UXP poate bloca temporar o ediție UXP completă; în această situație nu lansa un plugin gol și nu substitui un helper ascuns.
+- **Cost de distribuție:** fără server de procesare sau abonament AI; disponibilitatea Admin Console/Marketplace depinde de abonamentul Adobe și politica instituției. Posibile costuri de certificare, aprobări sau suport administrativ nu pot fi presupuse zero.
+
+Referințe Adobe (verificate 2026-11-02):
+- Enterprise private UXP distribution: https://developer.adobe.com/premiere-pro/uxp/plugins/distribution/enterprise-distribution/
+- Premiere UXP install / CCX / Admin Console: https://developer.adobe.com/premiere-pro/uxp/plugins/distribution/install/
+- Permissions for local DOCX picker: https://developer.adobe.com/premiere-pro/uxp/resources/recipes/filesystem-operations/
+- Package UXP CCX (native addon avoided): https://developer.adobe.com/premiere-pro/uxp/plugins/distribution/package/
