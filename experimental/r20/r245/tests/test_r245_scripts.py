@@ -90,4 +90,51 @@ with tempfile.TemporaryDirectory() as t:
          ('ABDULLAH AL MAMUNM','muncitor în construcții'),('OHE KHAN','curier')}
     assert tags['sourceNameReview']['verified']==2
     print('PASS Muncitori: mixed-inline SINCRON/8170/timecode, reporter Italic then Regular, mixed-strike, V4 explicit marker')
+# Additional uploaded newsroom formats: GEO+person+role, unlabelled B-roll
+# source, and 'SINCRON' without colon in a multiline Word paragraph.
+with tempfile.TemporaryDirectory() as t:
+    t=Path(t)
+    d=Document();d.add_paragraph('Un material editorial despre o comună')
+    d.add_paragraph('REPORTER: nu se afișează ca subtitrare')
+    d.add_paragraph('DUPĂ REFORMA ADMINISTRATIVĂ, MAI MULTE SATE SUNT UNITE')
+    d.add_paragraph('GEO: Comuna Exemplu, raionul Exemplu')
+    d.add_paragraph('0422');d.add_paragraph('Vadim Bulgaru')
+    d.add_paragraph('primarul comunei Exemplu')
+    d.add_paragraph('1.02 Locuitorii și-au exprimat părerile într-o dezbatere locală. 1.37')
+    d.add_paragraph('0428');d.add_paragraph('Iurie')
+    d.add_paragraph('locuitor al comunei Exemplu')
+    d.add_paragraph('00.11 Satul acesta rămâne cu propriul lui nume. 00.14')
+    p=t/'geo_people.docx';d.save(p)
+    a=build(p,'03')
+    assert {(x['name'],x['title']) for x in a['items']}=={
+      ('Vadim Bulgaru','primarul comunei Exemplu'),
+      ('Iurie','locuitor al comunei Exemplu')}
+    assert not any('GEO:' in x['text'] or x['text']=='Iurie' for x in build(p,'02')['items'])
+    print('PASS Satul Nou: GEO excluded; proper- and single-word names with explicit functions')
+    d=Document();d.add_paragraph('Un documentar despre istorie')
+    d.add_paragraph('7896');d.add_paragraph('00.12 Am așteptat decenii pentru o locuință. 00.41')
+    d.add_paragraph('UN PARTICIPANT LA EVENIMENTE A PRIMIT O LOCUINȚĂ NOUĂ')
+    d.add_paragraph('7852');d.add_paragraph('ION RUSU')
+    d.add_paragraph('participant la lichidarea consecințelor avariei')
+    d.add_paragraph('45.09 M-am înscris în anul 2003 și am mai așteptat. 45.31')
+    p=t/'historical_source.docx';d.save(p)
+    a=build(p,'03')
+    assert len(a['items'])==1 and a['items'][0]['name']=='ION RUSU'
+    assert not any(x['text']=='ION RUSU' for x in build(p,'02')['items'])
+    print('PASS Cernobil: source-only archival speech does not become a NameTag')
+    d=Document();d.add_paragraph('Un material despre profesii')
+    p=d.add_paragraph()
+    p.add_run('AMB.\n7759\n00.15–00.26\n').italic=True
+    p.add_run('Acesta este spațiul în care lucrăm cu animalele.')
+    d.add_paragraph('UN TÂNĂR ÎNVAȚĂ O PROFESIE UTILĂ PENTRU COMUNITATE')
+    p=d.add_paragraph()
+    p.add_run('SINCRON GHEORGHE MORARU, student, Facultatea de Medicină Veterinară\n')
+    p.add_run('7805\n00.32–00.56\n')
+    p.add_run('Am ales o profesie deoarece îmi plac animalele.')
+    path=t/'veterinarian.docx';d.save(path)
+    a=build(path,'03')
+    assert len(a['items'])==1 and a['items'][0]['name']=='GHEORGHE MORARU',a['items']
+    assert 'student' in a['items'][0]['title']
+    assert not any('SINCRON' in x['text'] or '7805' in x['text'] for x in build(path,'02')['items'])
+    print('PASS Veterinar: unlabeled code / SINCRON without colon / inline source and TC')
 print('R245 Word editorial structural test PASS')
