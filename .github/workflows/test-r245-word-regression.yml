@@ -34,7 +34,7 @@ jobs:
               (pathlib.Path('/tmp/r245_runtime/tools')/pathlib.Path(p).name).write_bytes(z.read('payload/'+p))
             pathlib.Path('dist/panel.js').write_bytes(z.read('payload/cep/r20_panel.js'))
           PY
-      - name: Diagnose Cernobil archival dialogue and exact paragraph coverage
+      - name: Verify first archival code starts editorial section and all Word layouts
         run: |
           python experimental/r20/r245/tests/test_r245_scripts.py
       - name: Independent parser backwards compatible with Balatina baseline
