@@ -221,7 +221,9 @@ def parse(docx):
             cards.append({'text': text, 'paragraph': uppercase_i, 'kind': 'uppercase'})
             # A VO interruption does not invalidate the source/person of the
             # next timecoded answer. E.g. Abdullah 5.58–6.16 after narration.
-            last_identity = None
+            # VO can interrupt an ongoing interview without starting a new
+            # named identity block. Only explicit new source/SINCRON markers
+            # may initiate another NameTag.
         uppercase = []
 
     def voice(text, i, kind='interview', raw=None, filtered=None, italic=False):
@@ -231,9 +233,13 @@ def parse(docx):
             return
         reporter=bool(italic) or kind=='narration'
         ident=(None,None,None) if reporter else (who,title,src)
-        if ident!=last_identity:
-            block+=1
-        last_identity=ident
+        # A reporter's italic question between the same person's answers
+        # must NOT create another NameTag. Source changes and explicit
+        # SINCRON headers reset last_identity separately.
+        if not reporter:
+            if ident!=last_identity:
+                block+=1
+            last_identity=ident
         segments.append({'ordinal':len(segments)+1,'paragraph_start':i,
             'paragraph_end':i,'source_code':ident[2],
             'speaker':ident[0],'role':ident[1],
