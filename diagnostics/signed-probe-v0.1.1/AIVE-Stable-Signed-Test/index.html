@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ro"><head><meta charset="utf-8"><title>AIVE STABLE SIGNED TEST</title>
+<style>
+html,body{margin:0;background:#121b29;color:#f6f8fc;font-family:Arial,sans-serif;font-size:14px}
+main{padding:22px;max-width:540px}h1{font-size:20px;margin:0 0 8px}p{color:#cad3df;line-height:1.5}
+small{color:#93abc9}button{cursor:pointer;background:#ea761b;color:#121b29;border:0;border-radius:7px;padding:12px 16px;font-weight:700}
+button:disabled{opacity:.5}pre{border:1px solid #465467;padding:14px;white-space:pre-wrap;word-break:break-word;min-height:80px;border-radius:6px}
+.pass{color:#89f0ac}.fail{color:#ff8888}textarea{height:120px;width:100%;box-sizing:border-box;color:#e0eaff;background:#0d1421}
+</style></head><body><main>
+<h1>AI Video Editor — STABLE SIGNED TEST</h1>
+<small>v0.1.1 • numai verificare CEP ↔ ExtendScript</small>
+<p>Panou de diagnostic fără editarea proiectului, fără ASR sau acces la rețea. BETA rămâne neatinsă.</p>
+<button id="probe" type="button">Verifică conexiunea</button>
+<pre id="status">NEVERIFICAT</pre>
+<textarea id="report" readonly spellcheck="false">AIVE STABLE SIGNED TEST 0.1.1 | NOT TESTED</textarea>
+</main><script>
+(function(){'use strict';
+  var button=document.getElementById('probe'),status=document.getElementById('status'),report=document.getElementById('report');
+  function show(ok,text){status.className=ok?'pass':'fail';status.textContent=text;report.value='AIVE STABLE SIGNED TEST 0.1.1\nStatus: '+(ok?'PASS':'FAIL')+'\n'+text;button.disabled=false;}
+  button.onclick=function(){button.disabled=true;status.textContent='Verificare...';
+    if(!window.__adobe_cep__||typeof window.__adobe_cep__.evalScript!=='function'){show(false,'CEP bridge indisponibil');return;}
+    try{window.__adobe_cep__.evalScript('$._AIVE_SIGNED_TEST.getStatus()',function(raw){
+      var a=String(raw||'').split('|');
+      if(a[0]==='AIVE_SIGNED_TEST'&&a[1]==='PASS')show(true,'CEP ↔ ExtendScript: OK\nPremiere: '+(a[2]||'?')+'\nProiect: '+(a[3]||'?')+'\nSecvență: '+(a[4]||'?')+'\nPiste video: '+(a[5]||'?'));
+      else show(false,'Răspuns JSX: '+String(raw).substring(0,250));
+    });}catch(e){show(false,'Eroare: '+String(e));}
+  };
+})();
+</script></body></html>
