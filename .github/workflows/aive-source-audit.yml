@@ -1,0 +1,32 @@
+name: "AIVE Stable source audit (isolated, no release)"
+on:
+  push:
+    branches: ["aive/stable-signed-probe"]
+    paths: [".github/workflows/aive-source-audit.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/r20-independent-graphics-gate
+          path: beta-candidate
+      - name: Inventory source and test availability
+        run: |
+          set -eux
+          find beta-candidate/experimental/r20 -maxdepth 4 -type f | sed -n '1,130p'
+          test -f beta-candidate/experimental/r20/candidate/cep/jsx/r20_graphics.jsx
+          test -f beta-candidate/experimental/r20/candidate/tools/r20_graphics_plans.py
+          python -m compileall -q beta-candidate/experimental/r20/candidate/tools
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aive-beta-candidate-source-audit-only
+          path: |
+            beta-candidate/experimental/r20/candidate/
+            beta-candidate/experimental/r20/r235/
+            beta-candidate/experimental/r20/r236/
+            beta-candidate/experimental/r20/r237/
+          if-no-files-found: error
