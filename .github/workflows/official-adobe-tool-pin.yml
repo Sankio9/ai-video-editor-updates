@@ -1,0 +1,22 @@
+name: "AIVE official ZXPSignCmd SHA256 pin (isolated)"
+on:
+  push:
+    branches: ["aive/stable-signed-probe"]
+    paths: [".github/workflows/official-adobe-tool-pin.yml"]
+permissions: {contents: read}
+jobs:
+  tool_pin:
+    runs-on: windows-latest
+    steps:
+      - name: Verify Adobe official Windows signer binary
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $url = "https://raw.githubusercontent.com/Adobe-CEP/CEP-Resources/master/ZXPSignCMD/4.1.3/x64/ZXPSignCmd.exe"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP/ZXPSignCmd.exe"
+          $p="$env:RUNNER_TEMP/ZXPSignCmd.exe"
+          if((Get-Item $p).Length -lt 4500000){throw "Binary too small"}
+          $digest=(Get-FileHash $p -Algorithm SHA256).Hash.ToLower()
+          Write-Host "AIVE_ADOBE_ZXP_SIGNER_SHA256=$digest"
+          & $p -help
+          if($LASTEXITCODE -ne 0){throw "Adobe signer help exit failure"}
