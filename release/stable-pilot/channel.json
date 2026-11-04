@@ -1,8 +1,13 @@
 {
   "schema": 1,
   "channel": "stable-pilot",
-  "version": "0.5.2",
-  "asset": null,
-  "release_status": "bootstrap-only",
-  "notes": "Canal de verificare pentru AIVE STABLE PILOT 0.5.2. Butonul Verifică actualizări confirmă conexiunea. Instalarea OTA nu este activată până la publicarea și verificarea assetului unei versiuni ulterioare. Fără modificări BETA sau STABLE 1.9.13."
+  "version": "0.5.3",
+  "minVersion": "0.5.2",
+  "asset": {
+    "url": "https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.3/AIVE_STABLE_PILOT_0.5.3_UPDATE.zip",
+    "sha256": "5c9004d55118c1bf4a2a6d4b4738764a63e8257b5f27600a0333145aa9f01011",
+    "size": 99753
+  },
+  "notes": "Actualizare de test OTA 0.5.2 → 0.5.3, fără modificări editoriale sau de inserare MOGRT. Închide Premiere după ce AIVE pregătește actualizarea. Windows personal numai; test LIVE de confirmat.",
+  "release_status": "ota-smoke-test"
 }
