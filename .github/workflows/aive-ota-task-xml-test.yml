@@ -1,0 +1,45 @@
+name: AIVE manual-only Task Scheduler XML Windows smoke
+on:
+  push:
+    paths:
+      - '.github/workflows/aive-ota-task-xml-test.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Register triggerless task and start it explicitly
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+          $task='AIVE-XML-QA-'+[guid]::NewGuid().ToString('N')
+          $dir=Join-Path $env:RUNNER_TEMP $task
+          New-Item -Type Directory -Force $dir|Out-Null
+          $flag=Join-Path $dir 'worker_pass.txt'
+          $worker=Join-Path $dir 'worker.ps1'
+          Set-Content -LiteralPath $worker -Encoding utf8 -Value "Set-Content -LiteralPath '$flag' -Value 'PASS'"
+          $xmlFile=Join-Path $dir 'task.xml'
+          $exe=Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+          $args='-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File "'+$worker+'"'
+          $xml='<?xml version="1.0" encoding="UTF-16"?>' + "`r`n" + '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><RegistrationInfo><Description>AIVE manual-only test</Description></RegistrationInfo><Principals><Principal id="AIVEUser"><UserId>'+$sid+'</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals><Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries><AllowStartOnDemand>true</AllowStartOnDemand><StartWhenAvailable>false</StartWhenAvailable><Enabled>true</Enabled><AllowHardTerminate>true</AllowHardTerminate><ExecutionTimeLimit>PT3H</ExecutionTimeLimit></Settings><Actions Context="AIVEUser"><Exec><Command>'+$exe+'</Command><Arguments>'+$args+'</Arguments></Exec></Actions></Task>'
+          [System.IO.File]::WriteAllText($xmlFile,$xml,[System.Text.UnicodeEncoding]::new($false,$true))
+          try {
+            & schtasks.exe /create /tn $task /xml $xmlFile
+            if($LASTEXITCODE -ne 0){throw 'XML registration failed'}
+            $defined=(& schtasks.exe /query /tn $task /xml) -join "`n"
+            if($LASTEXITCODE -ne 0){throw 'XML query failed'}
+            if($defined -match '<Triggers>'){throw 'Task unexpectedly contains a trigger'}
+            Write-Host 'PASS: zero trigger XML registered on Windows'
+            & schtasks.exe /run /tn $task
+            if($LASTEXITCODE -ne 0){throw 'On-demand run failed'}
+            for($i=0;$i -lt 30 -and -not (Test-Path $flag);$i++){Start-Sleep -Seconds 1}
+            if(!(Test-Path $flag)){throw 'No worker marker after explicit /run (noninteractive runners may block InteractiveToken)'}
+            if((Get-Content $flag -Raw).Trim() -ne 'PASS'){throw 'Wrong marker'}
+            Write-Host 'PASS: started and completed from Task Scheduler, no trigger or admin elevation'
+          } finally {
+            & schtasks.exe /delete /tn $task /f | Out-Null
+          }
