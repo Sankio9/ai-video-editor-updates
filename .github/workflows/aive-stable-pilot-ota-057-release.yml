@@ -1,0 +1,107 @@
+name: AIVE STABLE PILOT 0.5.7 Windows OTA release gate
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aive-stable-pilot-ota-057-release.yml'
+      - 'release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.7_UPDATE.zip'
+permissions:
+  contents: write
+concurrency:
+  group: aive-stable-pilot-057-ota
+  cancel-in-progress: false
+jobs:
+  windows-verify:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: SHA256, Windows PowerShell 5.1 parse, signed-extension inventory
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $source = 'release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.7_UPDATE.zip'
+          $expected = '42f19b4aff10a8d3135216211ed7cc9b770e0a5458e9bc8ebc77e37e91437004'
+          $hash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $expected) { throw "ZIP hash mismatch" }
+          $out = Join-Path $env:RUNNER_TEMP 'aive_057_unpacked'
+          Expand-Archive -LiteralPath $source -DestinationPath $out -Force
+          $manifest = [xml](Get-Content -LiteralPath (Join-Path $out 'extension/CSXS/manifest.xml') -Raw)
+          if ($manifest.ExtensionManifest.ExtensionBundleId -ne 'com.aive.stable.pilot' -or $manifest.ExtensionManifest.ExtensionBundleVersion -ne '0.5.7') { throw 'Incorrect identity or version' }
+          $items = @(Get-Content -LiteralPath (Join-Path $out 'EXTENSION_SHA256SUMS.txt'))
+          if ($items.Count -ne 11) { throw 'Incorrect extension file count' }
+          foreach ($line in $items) {
+            if ($line -notmatch '^([a-f0-9]{64})  (.+)$') { throw 'Invalid SHA256 inventory' }
+            $need = $Matches[1]
+            $file = Join-Path (Join-Path $out 'extension') $Matches[2]
+            if (!(Test-Path -LiteralPath $file)) { throw "Missing $file" }
+            if ((Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -ne $need) { throw "Modified $file" }
+          }
+          $probe = Join-Path $env:RUNNER_TEMP 'aive-parse.ps1'
+          @'
+          param([string]$FilePath)
+          $tokens=$null
+          $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile($FilePath,[ref]$tokens,[ref]$errors) | Out-Null
+          if($errors){$errors | ForEach-Object {Write-Error $_.Message};exit 1}
+          Write-Host "PASS Windows PowerShell 5.1 parser: $FilePath"
+          '@ | Set-Content -LiteralPath $probe -Encoding ASCII
+          $windowsPS = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          foreach($rel in @('INSTALL_PERSONAL.ps1','extension/update/worker.ps1')) {
+            & $windowsPS -NoProfile -NonInteractive -File $probe -FilePath (Join-Path $out $rel)
+            if($LASTEXITCODE -ne 0){throw "Windows PowerShell parse failed: $rel"}
+          }
+          & node --check (Join-Path $out 'extension/lib/updater.js')
+          if($LASTEXITCODE -ne 0){throw 'updater.js syntax failure'}
+          & node --check (Join-Path $out 'extension/lib/panel.js')
+          if($LASTEXITCODE -ne 0){throw 'panel.js syntax failure'}
+          Write-Host 'PASS AIVE 0.5.7 Windows static release gate'
+  publish-pilot:
+    runs-on: ubuntu-latest
+    needs: windows-verify
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm stable release untouched and expected channel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GITHUB_REPOSITORY/releases/latest --jq .tag_name)" = 'v1.9.13'
+          ! gh release view aive-stable-pilot-v0.5.7 >/dev/null 2>&1
+          python3 - <<'PY'
+          import json
+          p='release/stable-pilot/channel.json'
+          v=json.load(open(p))
+          assert v['schema']==1 and v['channel']=='stable-pilot' and v['version']=='0.5.3'
+          assert v['asset']['sha256']=='5c9004d55118c1bf4a2a6d4b4738764a63e8257b5f27600a0333145aa9f01011'
+          PY
+      - name: Publish separate prerelease only
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create aive-stable-pilot-v0.5.7 release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.7_UPDATE.zip --target "$GITHUB_SHA" --title 'AIVE STABLE PILOT 0.5.7 — OTA TASK SCHEDULER SMOKE (test only)' --notes 'Test OTA doar după bootstrap manual 0.5.6. Windows Task Scheduler lansare separată de Premiere, ACK corelat cu launchId, SHA-256, rollback Adobe UPIA. Parser editorial și MOGRT neschimbate. Adobe Premiere LIVE încă nevalidat. BETA și STABLE v1.9.13 neatinse.' --prerelease --latest=false
+      - name: Point only stable-pilot test channel at pinned 0.5.7
+        run: |
+          python3 - <<'PY'
+          import json
+          p='release/stable-pilot/channel.json'
+          v=json.load(open(p))
+          assert v['version']=='0.5.3'
+          v['version']='0.5.7'
+          v['minVersion']='0.5.6'
+          v['asset']={
+            'url':'https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.7/AIVE_STABLE_PILOT_0.5.7_UPDATE.zip',
+            'sha256':'42f19b4aff10a8d3135216211ed7cc9b770e0a5458e9bc8ebc77e37e91437004',
+            'size':104829}
+          v['notes']='OTA test-only 0.5.6 -> 0.5.7. Nu folositi BETA sau STABLE v1.9.13. Windows PC personal; la STOP nu inchideti Premiere.'
+          v['release_status']='ota-task-scheduler-smoke-live-pending'
+          with open(p,'w') as f: json.dump(v,f,ensure_ascii=False,indent=2);f.write('\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add release/stable-pilot/channel.json
+          git commit -m 'test(stable-pilot): enable pinned 0.5.7 OTA after Windows QA'
+          git push origin HEAD:main
+          test "$(gh api repos/$GITHUB_REPOSITORY/releases/latest --jq .tag_name)" = 'v1.9.13'
