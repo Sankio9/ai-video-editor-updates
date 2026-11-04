@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "channel": "stable-pilot",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "asset": null,
-  "notes": "AIVE STABLE PILOT 0.5.1 bootstrap updater. No remote code update until a signed/QA-verified package is published in this isolated channel. BETA and STABLE 1.9.13 unaffected.",
-  "release_status": "bootstrap-only"
+  "release_status": "bootstrap-only",
+  "notes": "Canal de verificare pentru AIVE STABLE PILOT 0.5.2. Butonul Verifică actualizări confirmă conexiunea. Instalarea OTA nu este activată până la publicarea și verificarea assetului unei versiuni ulterioare. Fără modificări BETA sau STABLE 1.9.13."
 }
