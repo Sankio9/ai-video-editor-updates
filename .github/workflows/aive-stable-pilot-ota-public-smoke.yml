@@ -1,0 +1,35 @@
+name: AIVE STABLE PILOT 0.5.3 Windows public OTA smoke
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/aive-stable-pilot-ota-public-smoke.yml']
+permissions:
+  contents: read
+jobs:
+  windows-public-ota-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Real public HTTPS download exactly like AIVE 0.5.2 updater
+        run: node release/stable-pilot/tests/public_http_smoke_053.js
+      - name: Expand and check Windows PowerShell installer syntax without Adobe
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $out=Join-Path $env:RUNNER_TEMP 'AIVE_STABLE_PILOT_0.5.3_UPDATE.zip'
+          $unpacked=Join-Path $env:RUNNER_TEMP 'aive053-test'
+          Expand-Archive -LiteralPath $out -DestinationPath $unpacked -Force
+          foreach($name in @('INSTALL_PERSONAL.ps1','extension/update/worker.ps1')) {
+            $p=Join-Path $unpacked $name
+            $tokens=$null; $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile($p,[ref]$tokens,[ref]$errors)|Out-Null
+            if($errors.Count -ne 0){ throw ('PowerShell syntax fail in '+$name+': '+($errors | Out-String)) }
+          }
+          $manifest=Join-Path $unpacked 'extension/CSXS/manifest.xml'
+          [xml]$xml=Get-Content -LiteralPath $manifest -Raw
+          if($xml.ExtensionManifest.ExtensionBundleVersion -ne '0.5.3'){throw 'Wrong bundle version'}
+          Write-Host 'PASS Windows PowerShell syntax and manifest 0.5.3. Adobe Premiere LIVE not executed.'
