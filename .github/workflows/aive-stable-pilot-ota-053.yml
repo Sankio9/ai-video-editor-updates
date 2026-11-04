@@ -1,0 +1,101 @@
+name: AIVE STABLE PILOT 0.5.3 OTA smoke publish
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.3_UPDATE.zip'
+permissions:
+  contents: write
+concurrency:
+  group: aive-stable-pilot-v053-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify EXACT approved asset, files, hashes, and code diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, zipfile, pathlib, re, xml.etree.ElementTree as ET
+          p=pathlib.Path('release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.3_UPDATE.zip')
+          sha=lambda data:hashlib.sha256(data).hexdigest()
+          expected='5c9004d55118c1bf4a2a6d4b4738764a63e8257b5f27600a0333145aa9f01011'
+          assert p.is_file() and sha(p.read_bytes())==expected,'Unexpected OTA ZIP SHA'
+          with zipfile.ZipFile(p) as z:
+            assert z.testzip() is None
+            names=z.namelist()
+            assert len(names)==14 and len(names)==len(set(names)), 'Unexpected ZIP files'
+            for n in names:
+              assert '..' not in n and not n.startswith('/') and not n.endswith('/'),n
+            assert set(names)=={
+              'INSTALL_PERSONAL.cmd','INSTALL_PERSONAL.ps1','EXTENSION_SHA256SUMS.txt',
+              'extension/CSXS/manifest.xml','extension/index.html',
+              'extension/jsx/aive_stable.jsx','extension/jsx/aive_graphics.jsx',
+              'extension/lib/editorial.js','extension/lib/interpreter.js','extension/lib/panel.js',
+              'extension/lib/updater.js','extension/lib/vendor/JSZIP_LICENSE.md',
+              'extension/lib/vendor/jszip.min.js','extension/update/worker.ps1',
+            }
+            root=ET.fromstring(z.read('extension/CSXS/manifest.xml'))
+            assert root.attrib.get('ExtensionBundleId')=='com.aive.stable.pilot'
+            assert root.attrib.get('ExtensionBundleVersion')=='0.5.3'
+            hashes={}
+            for line in z.read('EXTENSION_SHA256SUMS.txt').decode().splitlines():
+              m=re.fullmatch(r'([0-9a-f]{64})  ([^\r\n]+)',line)
+              assert m, 'Bad hash record'
+              h,rel=m.groups()
+              assert rel not in hashes
+              assert sha(z.read('extension/'+rel))==h,'Mismatch '+rel
+              hashes[rel]=h
+            assert len(hashes)==11
+            assert set('extension/'+n for n in hashes)==set(n for n in names if n.startswith('extension/'))
+            assert b"ExtensionBundleVersion -ne '0.5.3'" in z.read('INSTALL_PERSONAL.ps1')
+            assert b"var VERSION='0.5.3'" in z.read('extension/lib/updater.js')
+            assert b'WAITING_FOR_PREMIERE_EXIT' in z.read('extension/update/worker.ps1')
+            # The five files below must be exactly equal to version 0.5.2.
+            unchanged={
+              'jsx/aive_stable.jsx':'36a2d38fba6beb65e34fc96ee3b3996bd92b03d2a4f2c55fc42dc1625567c367',
+              'jsx/aive_graphics.jsx':'25e1e15cc6d0c3757b4c536ab892172dd0f1fcdca0ad05791932dc610a9a296b',
+              'update/worker.ps1':'e0c40ce97d38eca485c129985c044789429bef67db56d6fb4604c55fa1ca77d7',
+            }
+            for rel,h in unchanged.items():assert hashes[rel]==h,'Executor or worker modified: '+rel
+            # All other executable changes must be ONLY 0.5.2 -> 0.5.3 version strings.
+            old={
+              'CSXS/manifest.xml':'ce6b5c11506a21a7718448fd49ec6b01b28d6c5ac9808a2a699fd9524b3c2a20',
+              'index.html':'a0d75ea1963c089620e2c9e5f2baad5d5233cf67b693fec8c2f22fcb36c71849',
+              'lib/editorial.js':'309dc0bcabe11211b983832a9fbba634628e6444741ae8451dfcb5ac3cf86612',
+              'lib/interpreter.js':'cc9ab33376c5e03249c4dcf074884a018cf2c2e2599b6d7a9bfcdbc899826437',
+              'lib/panel.js':'d9da7ff25f2e77e194f6f58903100cacdd173d3725688b7056fc7c9d1ec1fc84',
+              'lib/updater.js':'f48d56179ddc7428175674f56687ef6fc56577e5b1cdead711ca5912be9b1194',
+            }
+            for rel,h in old.items():
+              body=z.read('extension/'+rel)
+              assert b'0.5.3' in body
+              assert sha(body.replace(b'0.5.3',b'0.5.2'))==h,'Unexpected code change: '+rel
+          print('PASS: 14 exact entries; 11 SHA; only version labels changed; no DOCX/media')
+          PY
+          unzip -p release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.3_UPDATE.zip extension/lib/editorial.js | node --check
+          unzip -p release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.3_UPDATE.zip extension/lib/interpreter.js | node --check
+          unzip -p release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.3_UPDATE.zip extension/lib/updater.js | node --check
+          unzip -p release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.3_UPDATE.zip extension/lib/panel.js | node --check
+      - name: Create TEST-only GitHub Release (never mark STABLE)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='aive-stable-pilot-v0.5.3'
+          ! gh release view "$tag" >/dev/null 2>&1 || { echo 'Tag exists; refusing overwrite'; exit 1; }
+          gh release create "$tag" release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.3_UPDATE.zip \
+            --target "$GITHUB_SHA" \
+            --title 'AIVE STABLE PILOT 0.5.3 — OTA SMOKE TEST (not production)' \
+            --notes 'Test-only 0.5.2→0.5.3 updater. Version strings only; editorial logic, Premiere MOGRT writer and rollback worker byte-unchanged. 11 pinned files. NOT Premiere LIVE validated. BETA & STABLE v1.9.13 unchanged.' \
+            --prerelease --latest=false
+          mkdir -p /tmp/aive-ota-roundtrip
+          gh release download "$tag" -p 'AIVE_STABLE_PILOT_0.5.3_UPDATE.zip' -D /tmp/aive-ota-roundtrip
+          echo '5c9004d55118c1bf4a2a6d4b4738764a63e8257b5f27600a0333145aa9f01011  /tmp/aive-ota-roundtrip/AIVE_STABLE_PILOT_0.5.3_UPDATE.zip' | sha256sum -c -
+          gh release view "$tag" --json tagName,isPrerelease,assets --jq '{tag: .tagName,prerelease: .isPrerelease,assets: [.assets[].name]}'
