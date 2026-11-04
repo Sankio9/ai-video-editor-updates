@@ -1,0 +1,41 @@
+name: "AIVE Beta UI baseline audit (no release)"
+on:
+  push:
+    branches: ["aive/stable-signed-probe"]
+    paths: [".github/workflows/beta-ui-baseline-audit.yml"]
+permissions: {contents: read}
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact released Beta UI roots and current patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p assets/v200 assets/v237
+          gh release download v2.0.0 --pattern 'AIVE_UPDATE.zip' --dir assets/v200
+          gh release download v2.3.7 --pattern 'AIVE_UPDATE.zip' --dir assets/v237
+          python - <<'PY'
+          import zipfile, json, hashlib, pathlib
+          for ver in ('v200','v237'):
+            p=pathlib.Path(f'assets/{ver}/AIVE_UPDATE.zip')
+            with zipfile.ZipFile(p) as z:
+              names=z.namelist()
+              print(ver,'sha256',hashlib.sha256(p.read_bytes()).hexdigest(),'names',names[:50])
+              assert 'manifest.json' in names
+              meta=json.loads(z.read('manifest.json'))
+              print('patch paths',[x['path'] for x in meta['files']])
+              for x in meta['files']:
+                if x['path'] in ('cep/index.html','cep/r20_panel.js'):
+                  out=pathlib.Path('assets')/ver/x['path']
+                  out.parent.mkdir(parents=True,exist_ok=True)
+                  out.write_bytes(z.read('payload/'+x['path']))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aive-beta-ui-exact-releases
+          path: assets/
+          if-no-files-found: error
