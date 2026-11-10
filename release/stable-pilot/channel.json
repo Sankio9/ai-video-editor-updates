@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "channel": "stable-pilot",
-  "version": "0.5.7",
-  "minVersion": "0.5.6",
+  "version": "0.5.11",
+  "minVersion": "0.5.9",
   "asset": {
-    "url": "https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.7/AIVE_STABLE_PILOT_0.5.7_UPDATE.zip",
-    "sha256": "42f19b4aff10a8d3135216211ed7cc9b770e0a5458e9bc8ebc77e37e91437004",
-    "size": 104829
+    "url": "https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.11/AIVE_STABLE_PILOT_0.5.11_UPDATE.zip",
+    "sha256": "cd20cb09c2f783d7ed8565f7d9a38fdb737120548049710aca46dfdb54d0cd90",
+    "size": 113812
   },
-  "notes": "0.5.10 OTA RETRACTED: pilot live failed Adobe UPIA/signing with exit 1, rollback to 0.5.9 confirmed by user. Do not retry 0.5.10. BETA and STABLE v1.9.13 unaffected.",
-  "release_status": "0.5.10-ota-blocked-upia-signing-live-diagnosis-required"
+  "notes": "AIVE STABLE PILOT 0.5.11 — Adobe ZXPSignCmd 4.1.3 official SHA-pinned on-demand bootstrap. UPIA Premiere LIVE verification pending.",
+  "release_status": "0.5.11-ota-live-validation-pending"
 }
