@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "channel": "stable-pilot",
-  "version": "0.5.7",
-  "minVersion": "0.5.6",
+  "version": "0.5.10",
+  "minVersion": "0.5.9",
   "asset": {
-    "url": "https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.7/AIVE_STABLE_PILOT_0.5.7_UPDATE.zip",
-    "sha256": "42f19b4aff10a8d3135216211ed7cc9b770e0a5458e9bc8ebc77e37e91437004",
-    "size": 104829
+    "url": "https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.10/AIVE_STABLE_PILOT_0.5.10_UPDATE.zip",
+    "sha256": "b7478866bbd11ddbdffba442d8ba628d1825d7de6cb09acc24364038d2dec7ab",
+    "size": 113241
   },
-  "notes": "OTA test-only 0.5.6 -> 0.5.7. Nu folositi BETA sau STABLE v1.9.13. Windows PC personal; la STOP nu inchideti Premiere.",
-  "release_status": "ota-task-scheduler-smoke-live-pending"
+  "notes": "AIVE STABLE PILOT 0.5.10 DOCX adaptive. Release verified. Pilot only; Premiere LIVE validation still required.",
+  "release_status": "pilot-ota-live-validation-pending"
 }
