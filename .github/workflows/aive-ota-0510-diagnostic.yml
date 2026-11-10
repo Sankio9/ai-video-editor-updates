@@ -1,0 +1,48 @@
+name: AIVE 0.5.10 read-only Windows diagnostic validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'qa/ota-0510/AIVE_0510_DIAGNOSTIC_READONLY.zip'
+      - '.github/workflows/aive-ota-0510-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify ZIP checksum and PowerShell 5.1 parse + execution
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $zip=Join-Path $env:GITHUB_WORKSPACE 'qa/ota-0510/AIVE_0510_DIAGNOSTIC_READONLY.zip'
+          $expected='b899821b33ea243ee9fc7038b9850e9b69813830fea1b5a9f37006ddfb0ce84f'
+          if((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected){throw 'ZIP checksum mismatch'}
+          $root=Join-Path $env:RUNNER_TEMP 'aive0510diag'
+          Expand-Archive -LiteralPath $zip -DestinationPath $root -Force
+          $ps1=Join-Path $root 'AIVE_DIAGNOSTIC_READONLY.ps1'
+          $cmd=Join-Path $root 'AIVE_DIAGNOSTIC_READONLY.cmd'
+          if(!(Test-Path -LiteralPath $ps1) -or !(Test-Path -LiteralPath $cmd)){throw 'Files missing'}
+          $parser=Join-Path $env:RUNNER_TEMP 'parse.ps1'
+          @'
+          param([string]$Target)
+          $tokens=$null
+          $errs=$null
+          [System.Management.Automation.Language.Parser]::ParseFile($Target,[ref]$tokens,[ref]$errs) | Out-Null
+          if($errs.Count -gt 0){foreach($err in $errs){Write-Error $err.Message};exit 1}
+          Write-Host 'PASS: Windows PowerShell 5.1 parser'
+          '@ | Set-Content -LiteralPath $parser -Encoding ASCII
+          $ps=Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+          & $ps -NoProfile -NonInteractive -File $parser -Target $ps1
+          if($LASTEXITCODE -ne 0){throw 'PowerShell parser failed'}
+          & $ps -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File $ps1
+          if($LASTEXITCODE -ne 0){throw 'Read-only diagnostic failed'}
+          $desktop=[Environment]::GetFolderPath('Desktop')
+          if([string]::IsNullOrWhiteSpace($desktop) -or !(Test-Path -LiteralPath $desktop)){$desktop=$env:TEMP}
+          $report=Join-Path $desktop 'AIVE_0510_DIAGNOSTIC_READONLY.txt'
+          if(!(Test-Path -LiteralPath $report)){throw 'Diagnostic report missing'}
+          $body=Get-Content -LiteralPath $report -Raw
+          if($body -notmatch 'SAFE READ-ONLY DIAGNOSTIC' -or $body -notmatch 'No files of the installed AIVE'){throw 'Report content invalid'}
+          Write-Host 'PASS: Windows PowerShell 5.1 execution, diagnostic report generated'
