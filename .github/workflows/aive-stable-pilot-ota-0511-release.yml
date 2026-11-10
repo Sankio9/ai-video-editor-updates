@@ -116,7 +116,14 @@ jobs:
           $cert=Join-Path $signing 'aive-stable-pilot.p12'
           & $exe -selfSignedCert US CA AIVE AIVE_0511_QA $pw $cert
           if($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $cert)){throw 'Self-signed QA certificate unavailable'}
-          (ConvertTo-SecureString $pw -AsPlainText -Force | ConvertFrom-SecureString) | Set-Content -LiteralPath (Join-Path $signing 'password.dpapi') -Encoding UTF8
+          # DPAPI must be produced by Windows PowerShell 5.1, same as the real installer.
+          $dpapiScript=Join-Path $env:RUNNER_TEMP 'make-aive-dpapi.ps1'
+          @'
+          param([string]$Password, [string]$Destination)
+          (ConvertTo-SecureString -String $Password -AsPlainText -Force | ConvertFrom-SecureString) | Set-Content -LiteralPath $Destination -Encoding UTF8
+          '@ | Set-Content -LiteralPath $dpapiScript -Encoding ASCII
+          & $winPS -NoProfile -NonInteractive -File $dpapiScript -Password $pw -Destination (Join-Path $signing 'password.dpapi')
+          if($LASTEXITCODE -ne 0){throw 'Windows PowerShell DPAPI fixture creation failed'}
           & $winPS -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File (Join-Path $folder 'INSTALL_PERSONAL.ps1') -SignOnly
           if($LASTEXITCODE -ne 0){throw 'Exact Windows 0.5.11 installer failed to sign'}
           $zxp=Join-Path $folder 'AIVE_STABLE_PILOT_0.5.11_SIGNED.zxp'
