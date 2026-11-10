@@ -1,0 +1,163 @@
+name: AIVE STABLE PILOT 0.5.10 — verified OTA publish
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.10_UPDATE.zip'
+      - '.github/workflows/aive-stable-pilot-ota-0510-release.yml'
+permissions:
+  contents: write
+concurrency:
+  group: aive-stable-pilot-0510-publish
+  cancel-in-progress: false
+jobs:
+  verify-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact ZIP SHA, archive inventory and original scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,zipfile,re,xml.etree.ElementTree as ET,pathlib
+          p=pathlib.Path('release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.10_UPDATE.zip')
+          H=lambda data:hashlib.sha256(data).hexdigest()
+          expected='b7478866bbd11ddbdffba442d8ba628d1825d7de6cb09acc24364038d2dec7ab'
+          assert p.stat().st_size==113241 and H(p.read_bytes())==expected, 'ZIP SHA or size mismatch'
+          with zipfile.ZipFile(p) as z:
+            assert z.testzip() is None, 'ZIP CRC invalid'
+            names=z.namelist()
+            assert len(names)==14 and len(set(names))==14,'ZIP entry count invalid'
+            assert set(names)=={
+              'EXTENSION_SHA256SUMS.txt','INSTALL_PERSONAL.cmd','INSTALL_PERSONAL.ps1',
+              'extension/CSXS/manifest.xml','extension/index.html',
+              'extension/jsx/aive_graphics.jsx','extension/jsx/aive_stable.jsx',
+              'extension/lib/editorial.js','extension/lib/interpreter.js',
+              'extension/lib/panel.js','extension/lib/updater.js',
+              'extension/lib/vendor/JSZIP_LICENSE.md',
+              'extension/lib/vendor/jszip.min.js','extension/update/worker.ps1'},'ZIP contains unexpected files'
+            assert all(not(n.startswith('/') or '..' in n or '\\' in n) for n in names),'Unsafe path'
+            xml=ET.fromstring(z.read('extension/CSXS/manifest.xml'))
+            assert xml.attrib['ExtensionBundleId']=='com.aive.stable.pilot'
+            assert xml.attrib['ExtensionBundleVersion']=='0.5.10'
+            registry={}
+            for line in z.read('EXTENSION_SHA256SUMS.txt').decode('utf-8').splitlines():
+              m=re.fullmatch(r'([a-f0-9]{64})  ([^\r\n]+)',line)
+              assert m, 'Invalid SHA record'
+              digest,rel=m.groups()
+              assert rel not in registry,'Duplicate SHA path'
+              assert 'extension/'+rel in names and H(z.read('extension/'+rel))==digest, 'SHA mismatch: '+rel
+              registry[rel]=digest
+            assert len(registry)==11 and set(registry)==set(n[10:] for n in names if n.startswith('extension/')),'Wrong file inventory'
+            pinned={
+              'lib/editorial.js':'0a59e86f135927c883daee2bf984729fec43f8519539a51493c711c0a76a940e',
+              'lib/interpreter.js':'5d5a2e5c129b8beeda99acce76665bc2e5b1edf6b5d4ba16d7809283e1a998ea',
+              'lib/panel.js':'27bbcfb1e0d57bef999fd3a9147d94c20c504bb11a5a592b13c177391d9ad1c1',
+              'lib/updater.js':'684319bed95197d9953e6e4d4b0b741eb0f7036708dd69dce86b55e01ec7ee6d',
+              'jsx/aive_graphics.jsx':'25e1e15cc6d0c3757b4c536ab892172dd0f1fcdca0ad05791932dc610a9a296b',
+              'jsx/aive_stable.jsx':'36a2d38fba6beb65e34fc96ee3b3996bd92b03d2a4f2c55fc42dc1625567c367',
+              'update/worker.ps1':'347670d0e8215339f9735f62e3387b20c91faed09e30e2e104466b8239a77cb0'}
+            for rel,digest in pinned.items():assert registry[rel]==digest,'Unexpected script: '+rel
+            assert b"ExtensionBundleVersion -ne '0.5.10'" in z.read('INSTALL_PERSONAL.ps1')
+            assert b"var VERSION='0.5.10'" in z.read('extension/lib/updater.js')
+            z.extractall('/tmp/aive0510')
+          print('PASS: exact archive, version, 11 hashes, unchanged MOGRT executor and worker')
+          PY
+          for f in editorial interpreter panel updater; do node --check "/tmp/aive0510/extension/lib/$f.js"; done
+          node - <<'JS'
+          const a=require('/tmp/aive0510/extension/lib/updater.js');
+          const feed={schema:1,channel:'stable-pilot',version:'0.5.10',minVersion:'0.5.9',asset:{url:'https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.10/AIVE_STABLE_PILOT_0.5.10_UPDATE.zip',sha256:'b7478866bbd11ddbdffba442d8ba628d1825d7de6cb09acc24364038d2dec7ab',size:113241}};
+          const q=a.verifyFeed(feed,'0.5.9');
+          if(!q.available||q.version!=='0.5.10')throw Error('0.5.9 refuses OTA');
+          console.log('PASS: AIVE updater accepts 0.5.9 -> 0.5.10 channel');
+          JS
+  verify-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell 5.1 installer and updater worker
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $zip=Join-Path $env:GITHUB_WORKSPACE 'release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.10_UPDATE.zip'
+          $folder=Join-Path $env:RUNNER_TEMP 'AIVE_0510'
+          Expand-Archive -LiteralPath $zip -DestinationPath $folder -Force
+          $winPS=Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+          $script=Join-Path $env:RUNNER_TEMP 'parse_AIVE.ps1'
+          @'
+          param([string]$FilePath)
+          $tokens=$null
+          $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile($FilePath,[ref]$tokens,[ref]$errors) | Out-Null
+          if($errors.Count -gt 0){$errors | ForEach-Object {Write-Error $_.Message};exit 1}
+          Write-Host "PASS Windows PowerShell 5.1: $FilePath"
+          '@ | Set-Content -LiteralPath $script -Encoding ASCII
+          foreach($relative in @('INSTALL_PERSONAL.ps1','extension/update/worker.ps1')){
+            & $winPS -NoProfile -NonInteractive -File $script -FilePath (Join-Path $folder $relative)
+            if($LASTEXITCODE -ne 0){throw "Windows PS syntax fail: $relative"}
+          }
+          foreach($name in @('editorial','interpreter','panel','updater')){
+            & node --check (Join-Path $folder ('extension/lib/'+$name+'.js'))
+            if($LASTEXITCODE -ne 0){throw "JS syntax fail: $name"}
+          }
+          Write-Host 'PASS AIVE 0.5.10 Windows release static gate'
+  publish-stable-pilot:
+    needs: [verify-linux, verify-windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish prerelease, verify exact release bytes, then advance ONLY pilot channel
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = 'v1.9.13'
+          TAG='aive-stable-pilot-v0.5.10'
+          ASSET='AIVE_STABLE_PILOT_0.5.10_UPDATE.zip'
+          FILE='release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.10_UPDATE.zip'
+          SHA='b7478866bbd11ddbdffba442d8ba628d1825d7de6cb09acc24364038d2dec7ab'
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" "$FILE" --target "$GITHUB_SHA" \
+              --title 'AIVE STABLE PILOT 0.5.10 — Adaptive DOCX (pilot only)' \
+              --notes 'Pilot OTA 0.5.9 → 0.5.10. Includes adaptive DOCX 02/03/04. ZIP SHA pinned, Windows static QA and rollback contract checked. Adobe Premiere LIVE validation remains required. BETA and STABLE v1.9.13 are untouched.' \
+              --prerelease --latest=false
+          fi
+          mkdir -p /tmp/aive0510_release_verify
+          gh release download "$TAG" --pattern "$ASSET" --dir /tmp/aive0510_release_verify
+          echo "$SHA  /tmp/aive0510_release_verify/$ASSET" | sha256sum -c -
+          git fetch origin main
+          git checkout -B main origin/main
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('release/stable-pilot/channel.json')
+          d=json.loads(p.read_text(encoding='utf-8'))
+          assert d['schema']==1 and d['channel']=='stable-pilot'
+          assert d['version'] in ('0.5.7','0.5.10'),'Unexpected live channel'
+          if d['version']=='0.5.10':
+            assert d['asset']['sha256']=='b7478866bbd11ddbdffba442d8ba628d1825d7de6cb09acc24364038d2dec7ab'
+          d.update({
+            'version':'0.5.10',
+            'minVersion':'0.5.9',
+            'asset':{
+              'url':'https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.10/AIVE_STABLE_PILOT_0.5.10_UPDATE.zip',
+              'sha256':'b7478866bbd11ddbdffba442d8ba628d1825d7de6cb09acc24364038d2dec7ab',
+              'size':113241},
+            'notes':'AIVE STABLE PILOT 0.5.10 DOCX adaptive. Release verified. Pilot only; Premiere LIVE validation still required.',
+            'release_status':'pilot-ota-live-validation-pending'})
+          p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          if ! git diff --quiet -- release/stable-pilot/channel.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add release/stable-pilot/channel.json
+            git commit -m 'release(stable-pilot): enable pinned 0.5.10 OTA after Windows QA'
+            git push origin HEAD:main
+          fi
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = 'v1.9.13'
+          echo 'PASS: verified prerelease live, stable-pilot channel pinned to 0.5.10; BETA untouched.'
