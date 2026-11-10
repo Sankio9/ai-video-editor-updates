@@ -1,0 +1,39 @@
+name: AIVE - Adobe ZXPSignCmd 4.1.3 official Windows preflight
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aive-verify-adobe-signer.yml'
+permissions:
+  contents: read
+jobs:
+  verify-signer:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch immutable official Adobe 4.1.3 x64 signer and test on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $url='https://raw.githubusercontent.com/Adobe-CEP/CEP-Resources/ab5e4e3e53a42fad08e1225a22a991bb1ffe73f6/ZXPSignCMD/4.1.3/x64/ZXPSignCmd.exe'
+          $exe=Join-Path $env:RUNNER_TEMP 'ZXPSignCmd.exe'
+          Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $exe
+          $file=Get-Item -LiteralPath $exe
+          if($file.Length -lt 100000){throw "Not an expected executable; size=$($file.Length)"}
+          $hash=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "ADOBE_SIGNER_SHA256=$hash"
+          Write-Host "ADOBE_SIGNER_SIZE=$($file.Length)"
+          & $exe -help
+          Write-Host "ADOBE_SIGNER_HELP_EXIT=$LASTEXITCODE"
+          $src=Join-Path $env:RUNNER_TEMP 'aive-minimal-extension'
+          New-Item -ItemType Directory -Force -Path $src | Out-Null
+          '<html><body>test</body></html>' | Set-Content -LiteralPath (Join-Path $src 'index.html') -Encoding UTF8
+          $p12=Join-Path $env:RUNNER_TEMP 'aive-ephemeral-test.p12'
+          $zxp=Join-Path $env:RUNNER_TEMP 'aive-ephemeral-test.zxp'
+          & $exe -selfSignedCert US CA AIVE AIVE_QA_test 4833-Test-Password $p12
+          if($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $p12)){throw "Signer self-certificate failed: $LASTEXITCODE"}
+          & $exe -sign $src $zxp $p12 4833-Test-Password
+          if($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $zxp)){throw "Signer sign failed: $LASTEXITCODE"}
+          $zsize=(Get-Item -LiteralPath $zxp).Length
+          if($zsize -lt 1000){throw "Signed ZXP suspicious size: $zsize"}
+          Write-Host "PASS_SIGNING_ZXP_BYTES=$zsize"
