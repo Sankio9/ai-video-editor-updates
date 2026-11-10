@@ -24,8 +24,8 @@ jobs:
           import hashlib,zipfile,re,xml.etree.ElementTree as ET,pathlib
           p=pathlib.Path('release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.11_UPDATE.zip')
           H=lambda data:hashlib.sha256(data).hexdigest()
-          expected='366ecee1cc177b6c5c34a95dded70be846b9135db7c049faf0f314570d1b1616'
-          assert p.stat().st_size==113797 and H(p.read_bytes())==expected, 'ZIP SHA or size mismatch'
+          expected='cd20cb09c2f783d7ed8565f7d9a38fdb737120548049710aca46dfdb54d0cd90'
+          assert p.stat().st_size==113812 and H(p.read_bytes())==expected, 'ZIP SHA or size mismatch'
           with zipfile.ZipFile(p) as z:
             assert z.testzip() is None, 'ZIP CRC invalid'
             names=z.namelist()
@@ -68,7 +68,7 @@ jobs:
           for f in editorial interpreter panel updater; do node --check "/tmp/aive0511/extension/lib/$f.js"; done
           node - <<'JS'
           const a=require('/tmp/aive0511/extension/lib/updater.js');
-          const feed={schema:1,channel:'stable-pilot',version:'0.5.11',minVersion:'0.5.9',asset:{url:'https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.11/AIVE_STABLE_PILOT_0.5.11_UPDATE.zip',sha256:'366ecee1cc177b6c5c34a95dded70be846b9135db7c049faf0f314570d1b1616',size:113797}};
+          const feed={schema:1,channel:'stable-pilot',version:'0.5.11',minVersion:'0.5.9',asset:{url:'https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.11/AIVE_STABLE_PILOT_0.5.11_UPDATE.zip',sha256:'cd20cb09c2f783d7ed8565f7d9a38fdb737120548049710aca46dfdb54d0cd90',size:113812}};
           const q=a.verifyFeed(feed,'0.5.9');
           if(!q.available||q.version!=='0.5.11')throw Error('0.5.9 refuses OTA');
           console.log('PASS: AIVE updater accepts 0.5.9 -> 0.5.11 channel');
@@ -147,7 +147,7 @@ jobs:
           TAG='aive-stable-pilot-v0.5.11'
           ASSET='AIVE_STABLE_PILOT_0.5.11_UPDATE.zip'
           FILE='release/stable-pilot/assets/AIVE_STABLE_PILOT_0.5.11_UPDATE.zip'
-          SHA='366ecee1cc177b6c5c34a95dded70be846b9135db7c049faf0f314570d1b1616'
+          SHA='cd20cb09c2f783d7ed8565f7d9a38fdb737120548049710aca46dfdb54d0cd90'
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "$FILE" --target "$GITHUB_SHA" \
               --title 'AIVE STABLE PILOT 0.5.11 — Adobe signer repair (personal Windows pilot)' \
@@ -166,14 +166,14 @@ jobs:
           assert d['schema']==1 and d['channel']=='stable-pilot'
           assert d['version'] in ('0.5.7','0.5.11'),'Unexpected live channel'
           if d['version']=='0.5.11':
-            assert d['asset']['sha256']=='366ecee1cc177b6c5c34a95dded70be846b9135db7c049faf0f314570d1b1616'
+            assert d['asset']['sha256']=='cd20cb09c2f783d7ed8565f7d9a38fdb737120548049710aca46dfdb54d0cd90'
           d.update({
             'version':'0.5.11',
             'minVersion':'0.5.9',
             'asset':{
               'url':'https://github.com/Sankio9/ai-video-editor-updates/releases/download/aive-stable-pilot-v0.5.11/AIVE_STABLE_PILOT_0.5.11_UPDATE.zip',
-              'sha256':'366ecee1cc177b6c5c34a95dded70be846b9135db7c049faf0f314570d1b1616',
-              'size':113797},
+              'sha256':'cd20cb09c2f783d7ed8565f7d9a38fdb737120548049710aca46dfdb54d0cd90',
+              'size':113812},
             'notes':'AIVE STABLE PILOT 0.5.11 — Adobe ZXPSignCmd 4.1.3 official SHA-pinned on-demand bootstrap. UPIA Premiere LIVE verification pending.',
             'release_status':'0.5.11-ota-live-validation-pending'})
           p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
